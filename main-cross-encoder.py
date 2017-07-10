@@ -35,7 +35,7 @@ if 0 == SAMPLE_DATA:
 	dataset_labels = attributes_data['labels']
 	visual_features_dataset = features['cnn_feat']
 	visual_features_dataset = visual_features_dataset.transpose()
-	train_class_labels = np.arange(1, 21, 1)
+	train_class_labels = np.arange(1, 33, 1)
 	test_class_labels = np.arange(21, 33, 1)
 else:
 	dataset_labels = np.array([1, 1, 1, 1, 1, 2, 1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 2, 3])
@@ -156,6 +156,10 @@ decoded_data_train1 = decoder1.predict(encoded_data_train1)
 encoded_data_valid1 = encoder1.predict(valid_samples)
 decoded_data_valid1 = decoder1.predict(encoded_data_valid1)
 
+scipy.io.savemat('data/aec1_encoded.mat', \
+	dict(encoded_data_train1 = encoded_data_train1, encoded_data_valid1 = encoded_data_valid1))
+pdb.set_trace()
+
 #Save model
 #Serialize model to JSON
 aec1_json = aec1.to_json()
@@ -165,7 +169,6 @@ with open("data/aec1.json", "w") as json_file:
 aec1.save_weights("data/aec1.h5")
 print("Saved model to disk")
 
-pdb.set_trace()
 #...................AEC 2..............
 # this is our input placeholder
 input_img2 = Input(shape=(dimension_hidden_layer1,))
@@ -212,7 +215,6 @@ with open("data/aec2.json", "w") as json_file:
 aec2.save_weights("data/aec2.h5")
 print("Saved model to disk")
 
-pdb.set_trace()
 #...................AEC 3..............
 # this is our input placeholder
 input_img3 = Input(shape=(dimension_hidden_layer2,))
@@ -333,8 +335,7 @@ for classI in train_class_labels:
 			decoder_layer_cc2 = cc2.layers[-1]
 			decoder_cc2 = Model(encoded_input_cc2, decoder_layer_cc2(encoded_input_cc2))
 			cc2.compile(optimizer='adadelta', loss='binary_crossentropy')
-			
-			cc1.fit(encoded_data_train_cc1, encoded_data_train_cc1,
+			cc2.fit(encoded_data_train_cc1, encoded_data_train_cc1,
             			    epochs=EPOCHS,
 			                batch_size=BATCH_SIZE,
 			                shuffle=True,
@@ -361,7 +362,7 @@ for classI in train_class_labels:
 			cc3 = Model(input_cc3, decoded_cc3)
 			encoder_cc3 = Model(input_cc3, encoded_cc3)
 			encoded_input_cc3 = Input(shape=(encoding_dimension_cc3,))
-			decoder_layer_cc3 = cross_coder3.layers[-1]
+			decoder_layer_cc3 = cc3.layers[-1]
 			decoder_cc3 = Model(encoded_input_cc3, decoder_layer_cc3(encoded_input_cc3))
 			cc3.compile(optimizer='adadelta', loss='binary_crossentropy')
 			
@@ -389,24 +390,3 @@ for classI in train_class_labels:
 			#auto_cc_features_test = np.append(auto_cc_features_test, decoded_data_test_cc, axis = 1)
 
 cc_end = time.time() 
-print "cc train time: %f" %((cc_end - cc_start)/60)
-# use Matplotlib (don't ask)
-if 0:
-	n = 10  # how many digits we will display
-	plt.figure(figsize=(20, 4))
-	for i in range(n):
-    	# display original
-	    ax = plt.subplot(2, n, i + 1)
-    	#plt.imshow(x_test[i].reshape(28, 28))
-	    plt.imshow(trainSamples[i, :].reshape(64, 64))
-	    plt.gray()
-	    ax.get_xaxis().set_visible(False)
-	    ax.get_yaxis().set_visible(False)
-	
-	    # display reconstruction
-	    ax = plt.subplot(2, n, i + 1 + n)
-	    plt.imshow(testSamples[i, :].reshape(64, 64))
-	    plt.gray()
-	    ax.get_xaxis().set_visible(False)
-	    ax.get_yaxis().set_visible(False)
-	plt.show()
