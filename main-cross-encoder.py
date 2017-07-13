@@ -1,7 +1,8 @@
-from get_data_for_cc import function_get_training_data_cc, input_cc, output_cc
+from get_data_for_cc import function_get_training_data_cc, input_cc, output_cc, normalise_data
 from get_data_for_cc import input_data, get_input_data
 from keras.layers import Input, Dense
 from keras.models import Model
+from keras import regularizers
 import scipy.io
 import matplotlib
 from keras.datasets import mnist
@@ -16,21 +17,35 @@ import numpy as np
 import pdb
 print "*****************************************************************************************************************************************"
 
-SAMPLE_DATA = 0
-EPOCHS = 10000
-EPOCHS_CC = 10000
-BATCH_SIZE = 64
-BATCH_SIZE_CC = 64
+SAMPLE_DATA = 1
+EPOCHS = 3
+EPOCHS_CC = 500
+BATCH_SIZE = 128
+BATCH_SIZE_CC = 128
 SYSTEM = 'desktop'; #desktop/laptop
-TRAIN_VALIDATION_SPLIT = 0.7
+TRAIN_VALIDATION_SPLIT = 0.8
 MIN_NUMBER_OF_SAMPLES_ACROSS_CLASSES = 50
+
+#Prepare encoder model...................
+if SAMPLE_DATA:
+	dimension_hidden_layer1 = 250
+	dimension_hidden_layer2 = 100
+	dimension_hidden_layer3 = 50
+else:
+	dimension_hidden_layer1 = 3
+	dimension_hidden_layer2 = 2
+	dimension_hidden_layer3 = 1
+	
 
 obj_input_data = input_data()
 obj_input_data.dataset_name = 'apy'
 obj_input_data.system_type = SYSTEM
 
 obj_input_data = get_input_data(obj_input_data)
-
+#pdb.set_trace()
+unnormalised_data = obj_input_data.visual_features_dataset
+normalised_data = normalise_data(unnormalised_data)
+obj_input_data.visual_features_dataset = normalised_data
 visual_features_dataset = obj_input_data.visual_features_dataset
 train_class_labels = obj_input_data.train_class_labels
 test_class_labels = obj_input_data.test_class_labels
@@ -56,13 +71,19 @@ train_sample_indices = np.array([])
 train_sample_labels = np.array([])
 valid_sample_indices = np.array([])
 valid_sample_labels = np.array([])
+number_of_samples_per_class_train = []
+number_of_samples_per_class_valid = []
 
+#pdb.set_trace()
 for class_index in train_class_labels: 
 	indices = np.flatnonzero(dataset_labels == class_index)
-	number_of_samples_for_train = int(TRAIN_VALIDATION_SPLIT * MIN_NUMBER_OF_SAMPLES_ACROSS_CLASSES)
-#	number_of_samples_for_train = int(TRAIN_VALIDATION_SPLIT * np.size(indices))
+	#number_of_samples_for_train = int(TRAIN_VALIDATION_SPLIT * MIN_NUMBER_OF_SAMPLES_ACROSS_CLASSES)
+	number_of_samples_for_train = int(TRAIN_VALIDATION_SPLIT * np.size(indices))
 	indices_train = indices[:number_of_samples_for_train]
-	indices_valid = indices[number_of_samples_for_train:MIN_NUMBER_OF_SAMPLES_ACROSS_CLASSES]
+	#indices_valid = indices[number_of_samples_for_train:MIN_NUMBER_OF_SAMPLES_ACROSS_CLASSES]
+	indices_valid = indices[number_of_samples_for_train:]
+	number_of_samples_per_class_train.append(number_of_samples_for_train)
+	number_of_samples_per_class_valid.append(np.size(indices) - number_of_samples_for_train)
 	train_sample_indices = np.concatenate((train_sample_indices, indices_train), axis = 0)
 	valid_sample_indices = np.concatenate((valid_sample_indices, indices_valid), axis = 0)
 	train_labels = np.empty(number_of_samples_for_train)
@@ -101,10 +122,6 @@ if SAMPLE_DATA:
 	print(train_sample_indices)
 	print(test_sample_indices)
 
-#Prepare encoder model...................
-dimension_hidden_layer1 = 2000
-dimension_hidden_layer2 = 1000
-dimension_hidden_layer3 = 500
 
 #...............stacked AECs...........
 #...................AEC 1..............
@@ -125,7 +142,7 @@ encoded_input1 = Input(shape=(dimension_hidden_layer1,))
 decoder_layer1 = aec1.layers[-1]
 # create the decoder model
 decoder1 = Model(encoded_input1, decoder_layer1(encoded_input1))
-aec1.compile(optimizer='adadelta', loss='mse')
+aec1.compile(optimizer='adadelta', loss='binary_crossentropy')
 aec_start = time.time()
 aec1.fit(train_samples, train_samples,
                 epochs=EPOCHS,
@@ -145,15 +162,20 @@ decoded_data_train1 = decoder1.predict(encoded_data_train1)
 encoded_data_valid1 = encoder1.predict(valid_samples)
 decoded_data_valid1 = decoder1.predict(encoded_data_valid1)
 
-scipy.io.savemat('data/aec1_encoded.mat', \
+if 0:
+	scipy.io.savemat('data/aec1_encoded.mat', \
 	dict(encoded_data_train1 = encoded_data_train1,\
 	     encoded_data_valid1 = encoded_data_valid1, \
 	     encoded_data_test1 = encoded_data_test1, \
 	     decoded_data_train1 = decoded_data_train1, \
 	     decoded_data_valid1 = decoded_data_valid1, \
 	     decoded_data_test1 = decoded_data_test1, \
+	     aec1_input_train = train_samples,\
+	     aec1_input_valid = valid_samples,\
+	     aec1_input_labels_train = train_sample_labels,\
+	     aec1_input_labels_valid = valid_sample_labels,\
 	     	))
-print("Save encoded/decoded data for aec1.")
+	print("Save encoded/decoded data for aec1.")
 
 #Save model
 #Serialize model to JSON
@@ -163,6 +185,16 @@ with open("data/aec1.json", "w") as json_file:
 # serialize weights to HDF5
 aec1.save_weights("data/aec1.h5")
 print("Saved model to disk")
+
+#Code snnippet to get layer weights
+#Manually....
+for layer in aec1.layers:
+    weights = layer.get_weights() # list of numpy arrays
+
+pdb.set_trace()
+for layer in aec1.layers:
+	h = layer.get_weights()
+	print(h)
 
 #...................AEC 2..............
 # this is our input placeholder
@@ -182,9 +214,9 @@ encoded_input2 = Input(shape=(dimension_hidden_layer2,))
 decoder_layer2 = aec2.layers[-1]
 # create the decoder model
 decoder2 = Model(encoded_input2, decoder_layer2(encoded_input2))
-aec2.compile(optimizer='adadelta', loss='mse')
+aec2.compile(optimizer='adadelta', loss='binary_crossentropy')
 aec_start = time.time()
-pdb.set_trace()
+#pdb.set_trace()
 aec2.fit(encoded_data_train1, encoded_data_train1,
                 epochs=EPOCHS,
                 batch_size=256,
@@ -241,7 +273,7 @@ encoded_input3 = Input(shape=(dimension_hidden_layer3,))
 decoder_layer3 = aec3.layers[-1]
 # create the decoder model
 decoder3 = Model(encoded_input3, decoder_layer3(encoded_input3))
-aec3.compile(optimizer='adadelta', loss='mse')
+aec3.compile(optimizer='adadelta', loss='binary_crossentropy')
 aec_start = time.time()
 aec3.fit(encoded_data_train2, encoded_data_train2,
                 epochs=EPOCHS,
@@ -309,14 +341,14 @@ for classI in train_class_labels:
 			#..................cc1.........................
 			encoding_dimension_cc1 = dimension_hidden_layer1
 			input_cc1 = Input(shape=(dimension_visual_data,))
-			encoded_cc1 = Dense(encoding_dimension_cc1, activation='relu')(input_cc1)
+			encoded_cc1 = Dense(encoding_dimension_cc1, activation='relu', activity_regularizer=regularizers.l1(10e-5))(input_cc1)
 			decoded_cc1 = Dense(dimension_visual_data, activation='sigmoid')(encoded_cc1)
 			cc1 = Model(input_cc1, decoded_cc1)
 			encoder_cc1 = Model(input_cc1, encoded_cc1)
 			encoded_input_cc1 = Input(shape=(encoding_dimension_cc1,))
 			decoder_layer_cc1 = cc1.layers[-1]
 			decoder_cc1 = Model(encoded_input_cc1, decoder_layer_cc1(encoded_input_cc1))
-			cc1.compile(optimizer='adadelta', loss='mse')
+			cc1.compile(optimizer='adadelta', loss='binary_crossentropy')
 			
 			obj_input_cc = input_cc()
 			obj_input_cc.classI = classI
@@ -363,7 +395,7 @@ for classI in train_class_labels:
 			encoded_input_cc2 = Input(shape=(encoding_dimension_cc2,))
 			decoder_layer_cc2 = cc2.layers[-1]
 			decoder_cc2 = Model(encoded_input_cc2, decoder_layer_cc2(encoded_input_cc2))
-			cc2.compile(optimizer='adadelta', loss='mse')
+			cc2.compile(optimizer='adadelta', loss='binary_crossentropy')
 			cc2_start = time.time()
 			cc2.fit(encoded_data_train_cc1, encoded_data_train_cc1,
             			    epochs=EPOCHS_CC,
@@ -402,7 +434,7 @@ for classI in train_class_labels:
 			encoded_input_cc3 = Input(shape=(encoding_dimension_cc3,))
 			decoder_layer_cc3 = cc3.layers[-1]
 			decoder_cc3 = Model(encoded_input_cc3, decoder_layer_cc3(encoded_input_cc3))
-			cc3.compile(optimizer='adadelta', loss='mse')
+			cc3.compile(optimizer='adadelta', loss='binary_crossentropy')
 			cc3_start = time.time()	
 			cc3.fit(encoded_data_train_cc2, encoded_data_train_cc2,
             			    epochs=EPOCHS_CC,
