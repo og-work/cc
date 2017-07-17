@@ -30,7 +30,7 @@ EPOCHS = 1
 EPOCHS_CC = 5000
 BATCH_SIZE = 128
 BATCH_SIZE_CC = 128
-TRAIN_VALIDATION_SPLIT = 0.8
+TR_TS_VA_SPLIT = np.array([0.8, 0.2, 0.2])
 MIN_NUMBER_OF_SAMPLES_ACROSS_CLASSES = 50
 NOISE_FACTOR = 0.01
 INCREASE_FACTOR = 1
@@ -38,6 +38,7 @@ dataset_list = ['sample', 'apy']
 DATASET_INDEX = 1
 system_list = ['desktop', 'laptop']
 SYSTEM_INDEX = 0
+DATA_SAVE_PATH = '/home/SharedData/omkar/'
 
 #Prepare encoder model...................
 if DATASET_INDEX == 0:
@@ -46,10 +47,10 @@ if DATASET_INDEX == 0:
 	dimension_hidden_layer3 = 1
 	REDUCED_DIMENSION_VISUAL_FEATURE = 5
 else:
-	dimension_hidden_layer1 = 100
+	dimension_hidden_layer1 = 300
 	dimension_hidden_layer2 = 30
 	dimension_hidden_layer3 = 20
-	REDUCED_DIMENSION_VISUAL_FEATURE = 800
+	REDUCED_DIMENSION_VISUAL_FEATURE = 1000
 
 	
 #Load input data..................................
@@ -103,6 +104,8 @@ for classI in train_class_labels:
 	mean_feature = classI_features.mean(0)
 	mean_feature_mat = np.append(mean_feature_mat, mean_feature.reshape(1, dimension_visual_data), axis = 0)	
 
+file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_mean_features_' + str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE)
+scipy.io.savemat(file_name, dict(mean_visula_features = mean_feature_mat))
 
 cc_start = time.time() 
 for classI in train_class_labels:
@@ -116,20 +119,21 @@ for classI in train_class_labels:
 			obj_input_cc = input_cc()
 			obj_input_cc.classI = classI
 			obj_input_cc.classJ = classJ
-			obj_input_cc.visual_features = visual_features_dataset
-			obj_input_cc.train_valid_split = TRAIN_VALIDATION_SPLIT
+			obj_input_cc.visual_features = function_normalise_data(visual_features_dataset)
+			obj_input_cc.train_valid_split = TR_TS_VA_SPLIT
 			obj_input_cc.dataset_labels = dataset_labels
 			
 			cc1_train_valid_data = function_get_training_data_cc(obj_input_cc)
 			cc1_input_train = cc1_train_valid_data.input_train
-			cc1_input_train_ori = cc1_input_train
+			#cc1_input_train_ori = function_normalise_data(cc1_input_train)
 			cc1_input_train = np.tile(cc1_input_train, (INCREASE_FACTOR, 1))
 			cc1_input_train = cc1_input_train + NOISE_FACTOR * np.random.normal(0, 1, cc1_input_train.shape)
+			cc1_input_train = function_normalise_data(cc1_input_train)
+
 			cc1_output_train = cc1_train_valid_data.output_train
-			cc1_output_train_ori = cc1_output_train
+			#cc1_output_train_ori = function_normalise_data(cc1_output_train)
 			cc1_output_train = np.tile(cc1_output_train, (INCREASE_FACTOR, 1))
 			cc1_output_train = cc1_output_train + NOISE_FACTOR * np.random.normal(0, 1, cc1_output_train.shape)
-			cc1_input_train = function_normalise_data(cc1_input_train)
 			cc1_output_train = function_normalise_data(cc1_output_train)
 			cc1_start = time.time()
 		
@@ -137,29 +141,50 @@ for classI in train_class_labels:
 			obj_train_tf_cc_input = train_tf_cc_input()
 			obj_train_tf_cc_input.cc1_input_train = cc1_input_train
 			obj_train_tf_cc_input.cc1_output_train = cc1_output_train
+			obj_train_tf_cc_input.cc1_input_valid = cc1_train_valid_data.input_valid
+			obj_train_tf_cc_input.cc1_output_valid = cc1_train_valid_data.output_valid
 			obj_train_tf_cc_input.dimension_hidden_layer1 = dimension_hidden_layer1
 			obj_train_tf_cc_input.EPOCHS_CC = EPOCHS_CC
 			obj_train_tf_cc_output = function_train_tensorflow_cc(obj_train_tf_cc_input)
 			
 			#Save data for cc1..................................
-			file_name = 'data/' + dataset_list[DATASET_INDEX] + '_' + 'cc1_data_part1_' + str(classI) + '_' + str(classJ) + '.mat'		
-			scipy.io.savemat(file_name, \
-				dict(encoded_data_train_cc1 = obj_train_tf_cc_output.encoded_data_train_cc1,\
-				     decoded_data_train_cc1 = obj_train_tf_cc_output.decoded_data_train_cc1))
+			if 0:	
+					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_' + str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) \
+									+ '_cc1_data_part1_' + str(classI) + '_' + str(classJ) + '.mat'		
+					scipy.io.savemat(file_name, \
+						dict(encoded_data_train_cc1 = obj_train_tf_cc_output.encoded_data_train_cc1,\
+							 decoded_data_train_cc1 = obj_train_tf_cc_output.decoded_data_train_cc1))
+					print "Saved data for cc1: %s" %file_name
 			
-			file_name = 'data/' + dataset_list[DATASET_INDEX] + '_' + 'cc1_data_part2_' + str(classI) + '_' + str(classJ) + '.mat'		
-			scipy.io.savemat(file_name, \
-				dict(cc1_input_train = cc1_input_train, \
-					 cc1_output_train = cc1_output_train))
+					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_'+ str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) + \
+									'_cc1_data_part2_' + str(classI) + '_' + str(classJ) + '.mat'		
+					scipy.io.savemat(file_name, \
+						dict(cc1_input_train = cc1_input_train, \
+							 cc1_output_train = cc1_output_train))
+					print "Save data for cc1: %s" %file_name
 					 
-			file_name = 'data/' + dataset_list[DATASET_INDEX] + '_' + 'cc1_data_part3_' + str(classI) + '_' + str(classJ) + '.mat'		
-			scipy.io.savemat(file_name, \
-				dict(cc1_input_train_ori = cc1_input_train_ori,\
-					 cc1_output_train_ori = cc1_output_train_ori, \
-                     indices_output_sample_train = cc1_train_valid_data.indices_ouput_samples_train,\
+					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_' + str(dimension_hidden_layer1) + '_' + str(REDUCED_DIMENSION_VISUAL_FEATURE) + \
+							'_cc1_data_part3_' + str(classI) + '_' + str(classJ) + '.mat'		
+					scipy.io.savemat(file_name, \
+						dict(cc1_input_train_ori = cc1_input_train_ori,\
+							 cc1_output_train_ori = cc1_output_train_ori, \
+									 indices_output_sample_train = cc1_train_valid_data.indices_ouput_samples_train,\
 					 indices_input_sample_train = cc1_train_valid_data.indices_input_samples_train))
+					print "Save data for cc1: %s" %file_name
 
-			print "Save encoded/decoded data for cc1: %s" %file_name
+			file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_' + str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) \
+							+ '_cc1_data_part4_' + str(classI) + '_' + str(classJ) + '.mat'		
+			scipy.io.savemat(file_name, \
+				dict(encoded_data_valid_cc1 = obj_train_tf_cc_output.encoded_data_valid_cc1,\
+				     decoded_data_valid_cc1 = obj_train_tf_cc_output.decoded_data_valid_cc1))
+			print "Saved data for cc1: %s" %file_name
+			
+			file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_'+ str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) + \
+							'_cc1_data_part5_' + str(classI) + '_' + str(classJ) + '.mat'		
+			scipy.io.savemat(file_name, \
+				dict(cc1_input_valid = cc1_train_valid_data.input_valid, \
+					 cc1_output_valid = cc1_train_valid_data.output_valid))
+			print "Save data for cc1: %s" %file_name
 			#pdb.set_trace()
 
 cc_end = time.time() 

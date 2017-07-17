@@ -73,7 +73,9 @@ print("Model saved in file: %s" % save_path)
 print "Target:"
 print output_data
 print "Final activations:"
+print sess.run(y, feed_dict={x: input_data})
 decoded = sess.run(y, feed_dict={x: input_data})
+print "Final activations: np"
 print decoded
 print "Final weights (input => hidden layer)"
 print sess.run(Wh)
@@ -85,7 +87,9 @@ print "Final biases (hidden layer => output)"
 print sess.run(bo)
 print "Final activations of hidden layer"
 print sess.run(h, feed_dict={x: input_data})
-
+acti_hidden = sess.run(h, feed_dict={x: input_data})
+print "Final activations of hidden layer np"
+print acti_hidden
 
 print('*******************Restoring******************')
 saver.restore(sess, "data/model.ckpt")

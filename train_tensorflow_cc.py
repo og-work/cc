@@ -8,6 +8,8 @@ import time
 class train_tf_cc_input:
 	cc1_input_train = np.array([])
 	cc1_output_train = np.array([])
+	cc1_input_valid = np.array([])
+	cc1_output_valid = np.array([])
 	dimension_hidden_layer1 = []
 	EPOCHS_CC = []
 
@@ -17,6 +19,8 @@ class train_tf_cc_input:
 class train_tf_cc_output:
 	decoded_data_train_cc1 = np.array([])
 	encoded_data_train_cc1 = np.array([])
+	decoded_data_valid_cc1 = np.array([])
+	encoded_data_valid_cc1 = np.array([])
 
     	def function(self):
         	print("This is train_tensorflow_cc_output class")
@@ -29,7 +33,7 @@ def function_train_tensorflow_cc(obj_train_tf_cc_input):
     # Weights and biases to hidden layer
 	Wh = tf.Variable(tf.random_uniform((input_dim, n_hidden), -1.0 / math.sqrt(input_dim), 1.0 / math.sqrt(input_dim)))
 	bh = tf.Variable(tf.zeros([n_hidden]))
-	h = tf.nn.sigmoid(tf.matmul(x,Wh) + bh)
+	h = tf.nn.relu(tf.matmul(x,Wh) + bh)
     # Weights and biases to hidden layer
     #Wo = tf.transpose(Wh) # tied weights
 	Wo = tf.Variable(tf.random_uniform((n_hidden, input_dim), -1.0 / math.sqrt(n_hidden), 1.0 / math.sqrt(n_hidden)))
@@ -62,4 +66,7 @@ def function_train_tensorflow_cc(obj_train_tf_cc_input):
 	obj_train_tf_cc_output = train_tf_cc_output()
 	obj_train_tf_cc_output.decoded_data_train_cc1 = sess.run(y, feed_dict={x: obj_train_tf_cc_input.cc1_input_train})
 	obj_train_tf_cc_output.encoded_data_train_cc1 = sess.run(h, feed_dict={x: obj_train_tf_cc_input.cc1_input_train})
+	obj_train_tf_cc_output.decoded_data_valid_cc1 = sess.run(y, feed_dict={x: obj_train_tf_cc_input.cc1_input_valid})
+	obj_train_tf_cc_output.encoded_data_valid_cc1 = sess.run(h, feed_dict={x: obj_train_tf_cc_input.cc1_input_valid})
+	
 	return obj_train_tf_cc_output

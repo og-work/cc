@@ -18,7 +18,7 @@ class output_cc:
 class input_cc:
 	classI = []
 	classJ = []
-	train_valid_split = []
+	train_valid_split = np.array([])
 	visual_features = np.array([])
 	dataset_labels = np.array([])
 
@@ -29,7 +29,7 @@ def function_get_training_data_cc(obj_input_cc):
 	#pdb.set_trace()
 	classI = obj_input_cc.classI
 	classJ = obj_input_cc.classJ
-	TRAIN_VALIDATION_SPLIT = obj_input_cc.train_valid_split
+	TR_TS_VA_SPLIT = obj_input_cc.train_valid_split
 	dataset_labels = obj_input_cc.dataset_labels
 	visual_features_dataset = obj_input_cc.visual_features
 
@@ -44,16 +44,19 @@ def function_get_training_data_cc(obj_input_cc):
 	if classI != classJ:
 		indices_classI_samples = np.flatnonzero(dataset_labels == classI)
 		indices_classJ_samples = np.flatnonzero(dataset_labels == classJ)
-		number_of_samples_classI_for_train = int(TRAIN_VALIDATION_SPLIT * np.size(indices_classI_samples))
-		number_of_samples_classJ_for_train = int(TRAIN_VALIDATION_SPLIT * np.size(indices_classJ_samples))
-		#number_of_samples_classI_for_train = MAX_NUMBER_OF_SAMPLES_CLASSI_TRAIN
-		#number_of_samples_classJ_for_train = MAX_NUMBER_OF_SAMPLES_CLASSJ_TRAIN
+
+		number_of_samples_classI_for_train = int(TR_TS_VA_SPLIT[0] * np.size(indices_classI_samples))
+		number_of_samples_classJ_for_train = int(TR_TS_VA_SPLIT[0] * np.size(indices_classJ_samples))
+		
 		indices_classI_samples_train = indices_classI_samples[:number_of_samples_classI_for_train]
-		#indices_classI_samples_valid = indices_classI_samples[number_of_samples_classI_for_train: 2 * number_of_samples_classI_for_train]
-		indices_classI_samples_valid = indices_classI_samples[number_of_samples_classI_for_train:]
 		indices_classJ_samples_train = indices_classJ_samples[:number_of_samples_classJ_for_train]
-		#indices_classJ_samples_valid = indices_classJ_samples[number_of_samples_classJ_for_train: 2 * number_of_samples_classJ_for_train]
-		indices_classJ_samples_valid = indices_classJ_samples[number_of_samples_classJ_for_train:]
+		
+		number_of_samples_classI_for_valid = number_of_samples_classI_for_train + int(TR_TS_VA_SPLIT[1] * np.size(indices_classI_samples))
+		number_of_samples_classJ_for_valid = number_of_samples_classJ_for_train + int(TR_TS_VA_SPLIT[1] * np.size(indices_classJ_samples))
+
+		indices_classI_samples_valid = indices_classI_samples[number_of_samples_classI_for_train:number_of_samples_classI_for_valid]
+		indices_classJ_samples_valid = indices_classJ_samples[number_of_samples_classJ_for_train:number_of_samples_classJ_for_valid]
+
 		print "classI %d classJ %d indices %d %d %d %d" %(classI, classJ, indices_classI_samples.size, indices_classJ_samples.size, \
 				number_of_samples_classI_for_train, number_of_samples_classJ_for_train)
 		#print(indices_classI_samples)
@@ -77,16 +80,14 @@ def function_get_training_data_cc(obj_input_cc):
 			indices_classI_sample_array.fill(index_classI_sample)
 			indices_input_sample_valid = np.concatenate((indices_input_sample_valid, indices_classI_sample_array), axis = 0)
 			indices_output_sample_valid = np.concatenate((indices_output_sample_valid, indices_classJ_samples_valid), axis = 0)
-			#print(indices_input_sample_train)							
-			#print(indices_output_sample_train)
-			#crossCodersTrainDataInput.append(indices_input_sample_train)							
-			#crossCodersTrainDataOutput.append(indices_output_sample_train)							
-			
+	
 		#pdb.set_trace()
 		input_samples_for_cc_train = visual_features_dataset[indices_input_sample_train.astype(int), :]
 		output_samples_for_cc_train = visual_features_dataset[indices_output_sample_train.astype(int), :]
 		input_samples_for_cc_valid = visual_features_dataset[indices_input_sample_valid.astype(int), :]
 		output_samples_for_cc_valid = visual_features_dataset[indices_output_sample_valid.astype(int), :]
+		
+		print "Number of samples for train %d, for validation %d" %(np.size(indices_input_sample_train), np.size(indices_input_sample_valid))			
 		
 		#pdb.set_trace()
 		obj_output_cc = output_cc()
@@ -139,7 +140,8 @@ def function_get_input_data(obj_input_data):
 		train_class_labels = np.array([7, 8, 10, 12, 13, 17, 21, 22, 23, 24])
 		#train_class_labels = np.arange(1, 21, 1)
 		test_class_labels = np.arange(21, 33, 1)
-	    #'1 aeroplane' '2 bicycle''3 bird''4 boat''5 bottle''6 bus''7 car''8 cat''9 chair''10 cow''11 diningtable''12 dog''13 horse'
+        
+#'1 aeroplane' '2 bicycle''3 bird''4 boat''5 bottle''6 bus''7 car''8 cat''9 chair''10 cow''11 diningtable''12 dog''13 horse'
 	    #'14 motorbike''15 person''16 pottedplant''17 sheep''18 sofa''19 train''20 tvmonitor''21 donkey''22 monkey''23 goat''24 wolf'
     	#'25 jetski''26 zebra''27 centaur''28 mug''29 statue''30 building''31 bag''32 carriage'
 	else:
