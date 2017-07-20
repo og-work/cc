@@ -5,10 +5,10 @@ data_exp4 = 'apy_50_400_cc1_data_part4_';
 data_exp5 = 'apy_50_400_cc1_data_part5_';
 
 train_classes = [7, 8, 10, 12, 13, 17, 21, 22, 23, 24];
-s_dim = 1;
-e_dim = size(ip, 1);
+
 margin = 0.0;
 p = 1;
+
 if 1
 for j = 1:length(train_classes)
     for k = 1:length(train_classes)
@@ -30,6 +30,9 @@ for j = 1:length(train_classes)
             ip = io.cc1_input_valid';%(sample, :);
             op = io.cc1_output_valid';%(sample, :);
             decoded_ip = cc1.decoded_data_valid_cc1';%(sample, :);
+            
+            s_dim = 1;
+            e_dim = size(ip, 1);
                         
             distance_ip_and_decoded_ip = sqrt(sum((ip(s_dim:e_dim, :) - decoded_ip(s_dim:e_dim, :)).*(ip(s_dim:e_dim, :) - decoded_ip(s_dim:e_dim, :))));
             distance_op_and_decoded_ip = sqrt(sum((op(s_dim:e_dim, :) - decoded_ip(s_dim:e_dim, :)).*(op(s_dim:e_dim, :) - decoded_ip(s_dim:e_dim, :))));

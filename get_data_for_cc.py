@@ -5,12 +5,19 @@ import tensorflow as tf
 from keras.callbacks import TensorBoard
 
 class output_cc:
-	input_train = np.array([])
-	output_train = np.array([])
-	input_valid = np.array([])
-	output_valid = np.array([])
-	indices_input_samples_train = np.array([])
-	indices_ouput_samples_train = np.array([])
+	input_train_perm = np.array([])
+	output_train_perm = np.array([])
+	input_valid_perm = np.array([])
+	output_valid_perm = np.array([])
+	input_test_perm = np.array([])
+	
+	indices_input_samples_train_perm = np.array([])
+	indices_ouput_samples_train_perm = np.array([])
+	indices_input_samples_test_perm = np.array([])
+	
+	indices_classI_samples_train = np.array([])
+	indices_classI_samples_test = np.array([])
+	indices_classI_samples_valid = np.array([])
 
 	def function(self):
 		print("This is output_cc class")
@@ -57,6 +64,9 @@ def function_get_training_data_cc(obj_input_cc):
 		indices_classI_samples_valid = indices_classI_samples[number_of_samples_classI_for_train:number_of_samples_classI_for_valid]
 		indices_classJ_samples_valid = indices_classJ_samples[number_of_samples_classJ_for_train:number_of_samples_classJ_for_valid]
 
+		number_of_samples_classI_for_test = int(TR_TS_VA_SPLIT[2] * np.size(indices_classI_samples))
+		indices_classI_samples_test = indices_classI_samples[number_of_samples_classI_for_valid:number_of_samples_classI_for_test]
+
 		print "classI %d classJ %d indices %d %d %d %d" %(classI, classJ, indices_classI_samples.size, indices_classJ_samples.size, \
 				number_of_samples_classI_for_train, number_of_samples_classJ_for_train)
 		#print(indices_classI_samples)
@@ -82,21 +92,26 @@ def function_get_training_data_cc(obj_input_cc):
 			indices_output_sample_valid = np.concatenate((indices_output_sample_valid, indices_classJ_samples_valid), axis = 0)
 	
 		#pdb.set_trace()
-		input_samples_for_cc_train = visual_features_dataset[indices_input_sample_train.astype(int), :]
-		output_samples_for_cc_train = visual_features_dataset[indices_output_sample_train.astype(int), :]
-		input_samples_for_cc_valid = visual_features_dataset[indices_input_sample_valid.astype(int), :]
-		output_samples_for_cc_valid = visual_features_dataset[indices_output_sample_valid.astype(int), :]
-		
 		print "Number of samples for train %d, for validation %d" %(np.size(indices_input_sample_train), np.size(indices_input_sample_valid))			
 		
 		#pdb.set_trace()
 		obj_output_cc = output_cc()
-		obj_output_cc.input_train = input_samples_for_cc_train
-		obj_output_cc.output_train = output_samples_for_cc_train
-		obj_output_cc.input_valid = input_samples_for_cc_valid
-		obj_output_cc.output_valid = output_samples_for_cc_valid
-		obj_output_cc.indices_input_samples_train = indices_input_sample_train
-		obj_output_cc.indices_ouput_samples_train = indices_output_sample_train
+		obj_output_cc.input_train_perm = visual_features_dataset[indices_input_sample_train.astype(int), :]
+		obj_output_cc.output_train_perm = visual_features_dataset[indices_output_sample_train.astype(int), :]
+		obj_output_cc.input_valid_perm = visual_features_dataset[indices_input_sample_valid.astype(int), :]
+		obj_output_cc.output_valid_perm = visual_features_dataset[indices_output_sample_valid.astype(int), :]
+		
+		obj_output_cc.input_train = visual_features_dataset[indices_classI_samples_train.astype(int), :]
+		obj_output_cc.input_test = visual_features_dataset[indices_classI_samples_test.astype(int), :] 
+		obj_output_cc.input_valid = visual_features_dataset[indices_classI_samples_valid.astype(int), :]
+		
+		obj_output_cc.indices_input_samples_train_perm = indices_input_sample_train
+		obj_output_cc.indices_ouput_samples_train_perm = indices_output_sample_train
+		obj_output_cc.indices_input_samples_test_perm = indices_classI_samples_test
+
+		obj_output_cc.indices_classI_samples_train = indices_classI_samples_train
+		obj_output_cc.indices_classI_samples_valid = indices_classI_samples_valid
+		obj_output_cc.indices_classI_samples_test = indices_classI_samples_test
 		return obj_output_cc
 
 class input_data:
@@ -137,8 +152,8 @@ def function_get_input_data(obj_input_data):
 		dataset_labels = attributes_data['labels']
 		visual_features_dataset = features['cnn_feat']
 		visual_features_dataset = visual_features_dataset.transpose()
-		train_class_labels = np.array([7, 8, 10, 12, 13, 17, 21, 22, 23, 24])
-		#train_class_labels = np.arange(1, 21, 1)
+		#train_class_labels = np.array([7, 8, 10, 12, 13, 17, 21, 22, 23, 24])
+		train_class_labels = np.arange(1, 5, 1)
 		test_class_labels = np.arange(21, 33, 1)
         
 #'1 aeroplane' '2 bicycle''3 bird''4 boat''5 bottle''6 bus''7 car''8 cat''9 chair''10 cow''11 diningtable''12 dog''13 horse'
@@ -153,8 +168,8 @@ def function_get_input_data(obj_input_data):
                                       [11, 14, 15, 16, 17, 21, 12, 24, 25, 31, 34, 36, 37, 38, 39, 32, 22.0, 33],
                                       [11, 14, 15, 16, 17, 21, 12, 24, 25, 31, 34, 36, 37, 38, 39, 32, 22, 33.0]], dtype='f')
 		visual_features_dataset = visual_features_dataset.transpose()
-		train_class_labels = np.array([1, 3])
-		test_class_labels = np.array([2, 3])
+		train_class_labels = np.array([1, 2, 3])
+		test_class_labels = np.array([1	, 2, 3])
 		
 	obj_input_data.test_class_labels = test_class_labels 
 	obj_input_data.train_class_labels = train_class_labels 
