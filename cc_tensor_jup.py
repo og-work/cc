@@ -1,7 +1,12 @@
-# %load cc_tensor.py
+
+# coding: utf-8
+
+# In[1]:
+
+
 #
 #
-#..........cc_tensor.py..........
+#..........cc_tensor_jup.py..........
 #
 #
 from sklearn.decomposition import PCA
@@ -22,7 +27,7 @@ import matplotlib.pyplot as plt
 import time
 import math
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+#os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 import tensorflow as tf
 from keras.callbacks import TensorBoard
 import numpy as np
@@ -30,17 +35,20 @@ import pdb
 print "*****************************************************************************************************************************************"
 #written from jup to noraml
 
-%%writefile cc_tensor.py
-EPOCHS = 1000
-EPOCHS_CC = 5000
+
+# In[2]:
+
+
+EPOCHS = 10
+EPOCHS_CC = 1000
 BATCH_SIZE = 128
 BATCH_SIZE_CC = 128
 TR_TS_VA_SPLIT = np.array([0.6, 0.2, 0.2])
 MIN_NUMBER_OF_SAMPLES_ACROSS_CLASSES = 50
-NOISE_FACTOR = 0.01
-INCREASE_FACTOR = 1
+NOISE_FACTOR = 10
+INCREASE_FACTOR = 10
 dataset_list = ['sample', 'apy']
-DATASET_INDEX = 0
+DATASET_INDEX = 1
 system_list = ['desktop', 'laptop']
 SYSTEM_INDEX = 0
 DATA_SAVE_PATH = '/home/SharedData/omkar/'
@@ -52,7 +60,7 @@ if DATASET_INDEX == 0:
 	dimension_hidden_layer3 = 1
 	REDUCED_DIMENSION_VISUAL_FEATURE = 5
 else:
-	dimension_hidden_layer1 = 300
+	dimension_hidden_layer1 = 10
 	dimension_hidden_layer2 = 30
 	dimension_hidden_layer3 = 20
 	REDUCED_DIMENSION_VISUAL_FEATURE = 1000
@@ -91,15 +99,19 @@ print(train_class_labels)
 print "Test classes are"
 print(test_class_labels)
 
-scipy.io.savemat('data/cnn_features.mat', \
-                dict(cnn_features = visual_features_dataset))
-print("Saved cnn features")
+#scipy.io.savemat('data/cnn_features.mat', \
+#                dict(cnn_features = visual_features_dataset))
+print("****Not Saved cnn features")
 
-%%writefile cc_tensor.py
 #......................cc.......................
 number_of_cc = number_of_train_classes * number_of_train_classes - number_of_train_classes
+print "Number of c coders %d "%number_of_cc
 cross_coders_train_data_input = []
 cross_coders_train_data_output = []
+
+
+# In[ ]:
+
 
 #Get mean feature vector for each class
 mean_feature_mat = np.empty((0, dimension_visual_data), float)
@@ -118,13 +130,10 @@ for classI in train_class_labels:
 
 file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_mean_features_' + str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE)
 #scipy.io.savemat(file_name, dict(mean_visula_features = mean_feature_mat))
+#pdb.set_trace()
 
-%%writefile cc_tensor.py
-#Empty list for containing all cross features for all classes
-encoded_cross_features_all_classes_train = []
-encoded_cross_features_all_classes_labels_train = []
-encoded_cross_features_all_classes_test = []
-encoded_cross_features_all_classes_labels_test = []
+# In[ ]:
+
 
 cc_start = time.time() 
 
@@ -166,58 +175,43 @@ for classI in train_class_labels:
 			cc1_start = time.time()
 		
 			#Train tensorflow cc.....................................
+			print "Training cc over %d samples"%(cc1_input_train.shape[0])
 			obj_train_tf_cc_input = train_tf_cc_input()
 			obj_train_tf_cc_input.cc1_input_train_perm = cc1_input_train
 			obj_train_tf_cc_input.cc1_output_train_perm = cc1_output_train
-			obj_train_tf_cc_input.cc1_input_valid_perm = obj_cc1_train_valid_data.input_valid_perm
-			obj_train_tf_cc_input.cc1_output_valid_perm = obj_cc1_train_valid_data.output_valid_perm
-			obj_train_tf_cc_input.cc1_input_train = obj_cc1_train_valid_data.input_train
-			obj_train_tf_cc_input.cc1_input_valid = obj_cc1_train_valid_data.input_valid
-			obj_train_tf_cc_input.cc1_input_test = obj_cc1_train_valid_data.input_test
+			obj_train_tf_cc_input.cc1_input_valid_perm = function_normalise_data(obj_cc1_train_valid_data.input_valid_perm)
+			obj_train_tf_cc_input.cc1_output_valid_perm = function_normalise_data(obj_cc1_train_valid_data.output_valid_perm)
+			obj_train_tf_cc_input.cc1_input_train = function_normalise_data(obj_cc1_train_valid_data.input_train)
+			obj_train_tf_cc_input.cc1_input_valid = function_normalise_data(obj_cc1_train_valid_data.input_valid)
+			obj_train_tf_cc_input.cc1_input_test = function_normalise_data(obj_cc1_train_valid_data.input_test)
+			obj_train_tf_cc_input.cc1_output_test = function_normalise_data(obj_cc1_train_valid_data.output_test)
 			obj_train_tf_cc_input.dimension_hidden_layer1 = dimension_hidden_layer1
 			obj_train_tf_cc_input.EPOCHS_CC = EPOCHS_CC
 			obj_train_tf_cc_output = function_train_tensorflow_cc(obj_train_tf_cc_input)
 			
+			#pdb.set_trace()			
 			#Save data for cc1..................................
 			if 0:	
-					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_' + str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) \
-									+ '_cc1_data_part1_' + str(classI) + '_' + str(classJ) + '.mat'		
-					scipy.io.savemat(file_name, \
-						dict(encoded_data_train_cc1 = obj_train_tf_cc_output.encoded_data_train_cc1,\
-							 decoded_data_train_cc1 = obj_train_tf_cc_output.decoded_data_train_cc1))
+					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_' + str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) 									+ '_cc1_data_part1_' + str(classI) + '_' + str(classJ) + '.mat'		
+					scipy.io.savemat(file_name, 						dict(encoded_data_train_cc1 = obj_train_tf_cc_output.encoded_data_train_cc1,							 decoded_data_train_cc1 = obj_train_tf_cc_output.decoded_data_train_cc1))
 					print "Saved data for cc1: %s" %file_name
 			
-					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_'+ str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) + \
-									'_cc1_data_part2_' + str(classI) + '_' + str(classJ) + '.mat'		
-					scipy.io.savemat(file_name, \
-						dict(cc1_input_train = cc1_input_train, \
-							 cc1_output_train = cc1_output_train))
+					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_'+ str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) + 									'_cc1_data_part2_' + str(classI) + '_' + str(classJ) + '.mat'		
+					scipy.io.savemat(file_name, 						dict(cc1_input_train = cc1_input_train, 							 cc1_output_train = cc1_output_train))
 					print "Save data for cc1: %s" %file_name
 					 
-					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_' + str(dimension_hidden_layer1) + '_' + str(REDUCED_DIMENSION_VISUAL_FEATURE) + \
-							'_cc1_data_part3_' + str(classI) + '_' + str(classJ) + '.mat'		
-					scipy.io.savemat(file_name, \
-						dict(cc1_input_train_ori = cc1_input_train_ori,\
-							 cc1_output_train_ori = cc1_output_train_ori, \
-									 indices_output_sample_train = obj_cc1_train_valid_data.indices_ouput_samples_train,\
-					 indices_input_sample_train = obj_cc1_train_valid_data.indices_input_samples_train))
+					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_' + str(dimension_hidden_layer1) + '_' + str(REDUCED_DIMENSION_VISUAL_FEATURE) + 							'_cc1_data_part3_' + str(classI) + '_' + str(classJ) + '.mat'		
+					scipy.io.savemat(file_name, 						dict(cc1_input_train_ori = cc1_input_train_ori,							 cc1_output_train_ori = cc1_output_train_ori, 									 indices_output_sample_train = obj_cc1_train_valid_data.indices_ouput_samples_train,					 indices_input_sample_train = obj_cc1_train_valid_data.indices_input_samples_train))
 					print "Save data for cc1: %s" %file_name
 
-					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_' + str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) \
-							+ '_cc1_data_part4_' + str(classI) + '_' + str(classJ) + '.mat'		
-					scipy.io.savemat(file_name, \
-					dict(encoded_data_valid_cc1 = obj_train_tf_cc_output.encoded_data_valid_cc1,\
-				     decoded_data_valid_cc1 = obj_train_tf_cc_output.decoded_data_valid_cc1))
+					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_' + str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) 							+ '_cc1_data_part4_' + str(classI) + '_' + str(classJ) + '.mat'		
+					scipy.io.savemat(file_name, 					dict(encoded_data_valid_cc1 = obj_train_tf_cc_output.encoded_data_valid_cc1,				     decoded_data_valid_cc1 = obj_train_tf_cc_output.decoded_data_valid_cc1))
 					print "Saved data for cc1: %s" %file_name
 			
-					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_'+ str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) + \
-							'_cc1_data_part5_' + str(classI) + '_' + str(classJ) + '.mat'		
-					scipy.io.savemat(file_name, \
-						dict(cc1_input_valid = obj_cc1_train_valid_data.input_valid, \
-					 	cc1_output_valid = obj_cc1_train_valid_data.output_valid))
+					file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_'+ str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) + 							'_cc1_data_part5_' + str(classI) + '_' + str(classJ) + '.mat'		
+					scipy.io.savemat(file_name, 						dict(cc1_input_valid = obj_cc1_train_valid_data.input_valid, 					 	cc1_output_valid = obj_cc1_train_valid_data.output_valid))
 					print "Save data for cc1: %s" %file_name
 			
-			#pdb.set_trace()			
 			#Concat encoded cross features:
 			#cross_features_classI_train.append(np.ndarray.tolist(obj_train_tf_cc_output.encoded_data_train_cc1))
 			if cnt == 0:
@@ -237,6 +231,10 @@ for classI in train_class_labels:
 	number_of_classI_samples_test = obj_train_tf_cc_output.encoded_data_test_cc1.shape[0] 
 	classI_labels_array_test = np.empty(number_of_classI_samples_test)
 	classI_labels_array_test.fill(classI)
+
+	print"Saving cross features for class %d"%classI
+	file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_'+ str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) + 							'_cc1_data_part_cross_feat_tr_' + str(classI) + '_' + '.mat'		
+	scipy.io.savemat(file_name, dict(cross_feautures_classI_tr = cross_features_classI_train))
 	
 	if cnt1 == 0:
 		cross_features_all_classes_train = cross_features_classI_train
@@ -250,10 +248,15 @@ for classI in train_class_labels:
 		cross_features_all_classes_labels_train = np.hstack((cross_features_all_classes_labels_train, classI_labels_array_train))	
 		cross_features_all_classes_labels_test = np.hstack((cross_features_all_classes_labels_test, classI_labels_array_test))	
 
-	print("there...........")
+	print"Saving cross features for classes 1 to %d ..."%classI
+	file_name = DATA_SAVE_PATH + 'data/' + dataset_list[DATASET_INDEX] + '_'+ str(dimension_hidden_layer1) + '_'+ str(REDUCED_DIMENSION_VISUAL_FEATURE) + 							'_cc1_data_part_cross_feat_ALL_CLASS_tr_' + str(classI) + '_' + '.mat'		
+	scipy.io.savemat(file_name, dict(cross_feautures_all_classes_tr = cross_features_all_classes_train))
 #	pdb.set_trace()
 
-%%writefile cc_tensor.py
+
+# In[ ]:
+
+
 #pdb.set_trace()
 obj_classifier_input = classifier_input()
 obj_classifier_input.train_data = cross_features_all_classes_train
@@ -266,3 +269,10 @@ obj_classifier_output = function_train_classifier_for_cc(obj_classifier_input)
 #pdb.set_trace()			
 cc_end = time.time() 
 #written from jup to noraml
+
+
+# In[ ]:
+
+
+
+
