@@ -14,7 +14,7 @@ class output_cc:
 	input_train = np.array([])
 	input_valid = np.array([])
 	input_test = np.array([])
-	output_test = np.array([])
+	output_valid = np.array([])
 	
 	indices_input_samples_train_perm = np.array([])
 	indices_ouput_samples_train_perm = np.array([])
@@ -46,9 +46,9 @@ def function_get_training_data_cc(obj_input_cc):
 	dataset_labels = obj_input_cc.dataset_labels
 	visual_features_dataset = obj_input_cc.visual_features
 
-	print "************* Class %d and Class %d*************************"%(classI, classJ)
-	MAX_NUMBER_OF_SAMPLES_CLASSI_TRAIN = 30 # for apy class 1-32: 30
-	MAX_NUMBER_OF_SAMPLES_CLASSJ_TRAIN = 30 # for apy class 1-32: 30
+	print "************* Class %d >>> Class %d *************************"%(classI, classJ)
+	MAX_NUMBER_OF_SAMPLES_CLASSI_TRAIN = 60 # for apy class 1-32: 30
+	MAX_NUMBER_OF_SAMPLES_CLASSJ_TRAIN = 60 # for apy class 1-32: 30
 
 	if classI != classJ:
 		indices_classI_samples = np.flatnonzero(dataset_labels == classI)
@@ -57,6 +57,7 @@ def function_get_training_data_cc(obj_input_cc):
 		#number_of_samples_classI_for_train = int(TR_TS_VA_SPLIT[0] * np.size(indices_classI_samples))
 		#number_of_samples_classJ_for_train = int(TR_TS_VA_SPLIT[0] * np.size(indices_classJ_samples))
 		
+		# To train cc 	
 		number_of_samples_classI_for_train = MAX_NUMBER_OF_SAMPLES_CLASSI_TRAIN
 		number_of_samples_classJ_for_train = MAX_NUMBER_OF_SAMPLES_CLASSJ_TRAIN
 		
@@ -140,17 +141,30 @@ def function_get_training_data_cc(obj_input_cc):
 		obj_output_cc.indices_ouput_samples_train_perm = indices_output_sample_train
 		obj_output_cc.indices_input_samples_test_perm = indices_classI_samples_test
 
-		#Non-permuted data		
-		obj_output_cc.input_train = visual_features_dataset[indices_classI_samples_train.astype(int), :]
-		obj_output_cc.input_test = visual_features_dataset[indices_classI_samples_test.astype(int), :] 
-		obj_output_cc.output_test = visual_features_dataset[indices_classJ_samples_test.astype(int), :] 
-		obj_output_cc.input_valid = visual_features_dataset[indices_classI_samples_valid.astype(int), :]
+		
+		#Non-permuted data, this is to train classfier after passing samples throu CC		
+		n_samples_classI_train = int(TR_TS_VA_SPLIT[0] * np.size(indices_classI_samples))
+		n_samples_classI_valid = int(TR_TS_VA_SPLIT[1] * min(np.size(indices_classJ_samples), np.size(indices_classI_samples)))
+		n_samples_classI_test = int(TR_TS_VA_SPLIT[2] * np.size(indices_classI_samples))
+	
+		ind_tr = indices_classI_samples[:n_samples_classI_train]
+		obj_output_cc.input_train = visual_features_dataset[ind_tr, :]
+		
+		ind_val_ip = indices_classI_samples[n_samples_classI_train:(n_samples_classI_train + n_samples_classI_valid)]
+		#NOTE: we want class I samples to map to any class J samples
+		ind_val_op = indices_classJ_samples[:n_samples_classI_valid]
+		obj_output_cc.input_valid = visual_features_dataset[ind_val_ip, :]
+		obj_output_cc.output_valid = visual_features_dataset[ind_val_op, :]
+		
+		ind_ts = indices_classI_samples[(n_samples_classI_train + n_samples_classI_valid):\
+					 (n_samples_classI_train + n_samples_classI_valid + n_samples_classI_test)]
+		obj_output_cc.input_test = visual_features_dataset[ind_ts, :] 
 		
 		#Non-permuted indices		
-		obj_output_cc.indices_classI_samples_train = indices_classI_samples_train
-		obj_output_cc.indices_classI_samples_valid = indices_classI_samples_valid
-		obj_output_cc.indices_classI_samples_test = indices_classI_samples_test
-		obj_output_cc.indices_classJ_samples_test = indices_classJ_samples_test
+		#obj_output_cc.indices_classI_samples_train = indices_classI_samples_train
+		#obj_output_cc.indices_classI_samples_valid = indices_classI_samples_valid
+		#obj_output_cc.indices_classI_samples_test = indices_classI_samples_test
+		#obj_output_cc.indices_classJ_samples_test = indices_classJ_samples_test
 		#pdb.set_trace()
 		return obj_output_cc
 
@@ -173,7 +187,11 @@ def function_normalise_data(unnormalised_data):
 	#normalised_data = unnormalised_data/max_val_mat
 	
 	#Normalise entire data between [0,1]
-	normalised_data = np.divide((unnormalised_data - unnormalised_data.min()), (unnormalised_data.max() - unnormalised_data.min()))
+	if unnormalised_data.shape[0] != 0:
+		normalised_data = np.divide((unnormalised_data - unnormalised_data.min()), (unnormalised_data.max() - unnormalised_data.min()))
+	else:
+		normalised_data = [] 
+
 	return normalised_data
 
 def function_get_input_data(obj_input_data):
@@ -192,8 +210,8 @@ def function_get_input_data(obj_input_data):
 		dataset_labels = attributes_data['labels']
 		visual_features_dataset = features['cnn_feat']
 		visual_features_dataset = visual_features_dataset.transpose()
-		train_class_labels = np.array([1, 2, 3, 4, 5])
-		#train_class_labels = np.arange(1, 33, 1)
+	#	train_class_labels = np.array([7, 6])
+		train_class_labels = np.arange(1, 11, 1)
 		test_class_labels = np.arange(21, 33, 1)
         
 #'1 aeroplane' '2 bicycle''3 bird''4 boat''5 bottle''6 bus''7 car''8 cat''9 chair''10 cow''11 diningtable''12 dog''13 horse'
@@ -218,3 +236,29 @@ def function_get_input_data(obj_input_data):
 	obj_input_data.dataset_labels = dataset_labels
 
 	return obj_input_data
+
+
+class save_data():
+	str1 = []
+	str2 = []
+	str3 = []
+	str4 = []
+	str5 = []
+	str6 = []
+	base_path = []
+	save_file_name_as = []
+	save_data_as = []
+	
+	def function(self):
+		print "This is save data class..."
+
+def function_save_data(obj_save_data): 
+	str1 = str(obj_save_data.str1)
+	str2 = str(obj_save_data.str2)
+	str3 = str(obj_save_data.str3)
+	str4 = str(obj_save_data.str4)
+	str5 = str(obj_save_data.str5)
+	str6 = str(obj_save_data.str6)
+
+	return
+	

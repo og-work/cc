@@ -25,10 +25,11 @@ class train_tf_cc_input:
 	cc1_output_valid_perm = np.array([])
 	cc1_input_train = np.array([])
 	cc1_input_valid = np.array([])
+	cc1_output_valid = np.array([])
 	cc1_input_test = np.array([])
-	cc1_output_test = np.array([])
 	dimension_hidden_layer1 = []
 	EPOCHS_CC = []
+	dim_hidden_layer1 = []
 
     	def function(self):
         	print("This is train_tensorflow_cc_input class")
@@ -45,7 +46,6 @@ class train_tf_cc_output:
         	print("This is train_tensorflow_cc_output class")
 
 def function_train_tensorflow_cc(obj_train_tf_cc_input):
-
 	n_samp, input_dim = (obj_train_tf_cc_input.cc1_input_train_perm).shape
 	n_hidden = obj_train_tf_cc_input.dimension_hidden_layer1
 	x = tf.placeholder("float", [None, input_dim])
@@ -62,42 +62,48 @@ def function_train_tensorflow_cc(obj_train_tf_cc_input):
 	y_ = tf.placeholder("float", [None,input_dim])
 	cross_entropy = -tf.reduce_sum(y_*tf.log(y))
 	meansq = tf.reduce_mean(tf.square(y_-y))
-	train_step = tf.train.GradientDescentOptimizer(0.05).minimize(meansq)
+	train_step = tf.train.GradientDescentOptimizer(0.5).minimize(meansq)
 	
 	init = tf.initialize_all_variables()
 	sess = tf.Session()
 	sess.run(init)
 	n_rounds = obj_train_tf_cc_input.EPOCHS_CC
-	batch_size = min(50, n_samp)
-	n_samp_test = obj_train_tf_cc_input.cc1_input_test.shape[0]
-	batch_size_test = min(50, n_samp_test)
+	batch_size = min(30, n_samp)
+	n_samp_valid = obj_train_tf_cc_input.cc1_input_valid.shape[0]
+	batch_size_valid = min(100, n_samp_valid)
 	#pdb.set_trace()
 	cc1_start = time.time()
-	
+	number_of_batches = int(n_samp / batch_size)
 	for i in range(n_rounds):
-		sample = np.random.randint(n_samp, size=batch_size)
-		batch_xs = obj_train_tf_cc_input.cc1_input_train_perm[sample][:]
-		batch_ys = obj_train_tf_cc_input.cc1_output_train_perm[sample][:]
-		sess.run(train_step, feed_dict={x: batch_xs, y_:batch_ys})
-		if i % 50 == 0:
-			sample_test = np.random.randint(n_samp_test, size=batch_size_test)
-			batch_x_test = obj_train_tf_cc_input.cc1_input_test[sample_test][:]
-			batch_y_test = obj_train_tf_cc_input.cc1_output_test[sample_test][:]
-			print "Epoch %d:  train MSE %f test MSE %f" %(i, sess.run(meansq, feed_dict={x: batch_xs, y_:batch_ys}), \
-				sess.run(meansq, feed_dict={x: batch_x_test, y_:batch_y_test}))
+		shuffled_data_indices = np.random.permutation(n_samp)
+		for batch in range(number_of_batches):
+			sample = shuffled_data_indices[batch*batch_size: batch*batch_size + batch_size]
+			batch_xs = obj_train_tf_cc_input.cc1_input_train_perm[sample][:]
+			batch_ys = obj_train_tf_cc_input.cc1_output_train_perm[sample][:]
+			sess.run(train_step, feed_dict={x: batch_xs, y_:batch_ys})
+			#pdb.set_trace()
+			if batch % 1000 == 0:
+				shuffled_valid_data_indices = np.random.permutation(n_samp_valid)
+				sample_valid = shuffled_valid_data_indices[:batch_size_valid]
+				batch_x_valid = obj_train_tf_cc_input.cc1_input_valid[sample_valid][:]
+				batch_y_valid = obj_train_tf_cc_input.cc1_output_valid[sample_valid][:]
+				print "Epoch %4d Batch %4d:  train MSE %f valid MSE %f" %(i, batch, sess.run(meansq, feed_dict={x: obj_train_tf_cc_input.cc1_input_train_perm, y_:obj_train_tf_cc_input.cc1_output_train_perm}), \
+				sess.run(meansq, feed_dict={x: batch_x_valid, y_:batch_y_valid}))
 			#print i, sess.run(cross_entropy, feed_dict={x: batch_xs, y_:batch_ys}), sess.run(meansq, feed_dict={x: batch_xs, y_:batch_ys})
 	cc1_end = time.time()
 	cc1_time = cc1_end - cc1_start
 
   #Get cc features for training  and validation samples
+	print"Encoding %d train samples for this class "%obj_train_tf_cc_input.cc1_input_train.shape[0]
 	obj_train_tf_cc_output = train_tf_cc_output()
 	obj_train_tf_cc_output.decoded_data_train_cc1 = sess.run(y, feed_dict={x: obj_train_tf_cc_input.cc1_input_train})
 	obj_train_tf_cc_output.encoded_data_train_cc1 = sess.run(h, feed_dict={x: obj_train_tf_cc_input.cc1_input_train})
 
-	obj_train_tf_cc_output.decoded_data_valid_cc1 = sess.run(y, feed_dict={x: obj_train_tf_cc_input.cc1_input_valid})
+	obj_train_tf_cc_output.decoded_data_n_samples_classI_trainvalid_cc1 = sess.run(y, feed_dict={x: obj_train_tf_cc_input.cc1_input_valid})
 	obj_train_tf_cc_output.encoded_data_valid_cc1 = sess.run(h, feed_dict={x: obj_train_tf_cc_input.cc1_input_valid})
 	
   #Get cc features for testing samples
+	print"Encoding %d test samples for this class "%obj_train_tf_cc_input.cc1_input_test.shape[0]
 	obj_train_tf_cc_output.encoded_data_test_cc1 = sess.run(h, feed_dict={x: obj_train_tf_cc_input.cc1_input_test})
 	obj_train_tf_cc_output.decoded_data_test_cc1 = sess.run(y, feed_dict={x: obj_train_tf_cc_input.cc1_input_test})
     	#pdb.set_trace()
@@ -105,7 +111,8 @@ def function_train_tensorflow_cc(obj_train_tf_cc_input):
 
 
 class classifier_input:
-
+	
+	epochs = []
 	train_data = []
 	test_data = []
 	train_labels = []
@@ -144,22 +151,6 @@ def forwardprop(X, w_1, w_2):
     yhat = tf.matmul(h, w_2)  # The \varphi function
     return yhat
 
-def get_iris_data():
-    """ Read the iris data set and split them into training and test sets """
-    iris   = datasets.load_iris()
-    data   = iris["data"]
-    target = iris["target"]
-
-    # Prepend the column of 1s for bias
-    N, M  = data.shape
-    all_X = np.ones((N, M + 1))
-    all_X[:, 1:] = data
-
-    # Convert into one-hot vectors
-    num_labels = len(np.unique(target))
-    all_Y = np.eye(num_labels)[target]  # One liner trick!
-    RANDOM_SEED = 42
-    return train_test_split(all_X, all_Y, test_size=0.33, random_state=RANDOM_SEED)
 
 def function_train_classifier_for_cc(obj_classifier_input):
 
@@ -179,12 +170,11 @@ def function_train_classifier_for_cc(obj_classifier_input):
 	test_X = obj_classifier_input.test_data
 	train_y = labels_train
 	test_y = labels_test
-	#pdb.set_trace()
-	
+	pdb.set_trace()
 	
 	# Layer's sizes
 	x_size = train_X.shape[1]   # Number of input nodes: 4 features and 1 bias
-	h_size = 20                # Number of hidden nodes
+	h_size = obj_classifier_input.dim_hidden_layer1                # Number of hidden nodes
 	y_size = train_y.shape[1]   # Number of outcomes (3 iris flowers)
 
 	# Symbols
@@ -201,26 +191,30 @@ def function_train_classifier_for_cc(obj_classifier_input):
 
 	# Backward propagation
 	cost    = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=yhat))
-	updates = tf.train.GradientDescentOptimizer(0.001).minimize(cost)
+	updates = tf.train.GradientDescentOptimizer(0.005).minimize(cost)
 
 	# Run SGD
 	sess = tf.Session()
 	init = tf.global_variables_initializer()
 	sess.run(init)
 	n_samp = train_X.shape[0]
-	batch_size = min(50, n_samp)
-	for epoch in range(100):
-	# Train with each example
-		sample = np.random.randint(n_samp, size=batch_size)
-		batch_x = train_X[sample][:]
-		batch_y = train_y[sample][:]
-		#for i in range(len(train_X)):
-		sess.run(updates, feed_dict={X: batch_x, y: batch_y})
-		#sess.run(updates, feed_dict={X: train_X[i: i + 1], y: train_y[i: i + 1]})
-		train_accuracy = np.mean(np.argmax(train_y, axis=1) == sess.run(predict, feed_dict={X: train_X, y: train_y}))
-		test_accuracy  = np.mean(np.argmax(test_y, axis=1) == sess.run(predict, feed_dict={X: test_X, y: test_y}))
-		pdb.set_trace()
-		print("Epoch = %d, train accuracy = %.2f%%, test accuracy = %.2f%%" % (epoch + 1, 100. * train_accuracy, 100. * test_accuracy))
+	batch_size = min(1, n_samp)
+	number_of_batches = int(n_samp/batch_size)
+	
+	train_accuracy = []
+	test_accuracy = []
+	
+	for epoch in range(obj_classifier_input.epochs):
+		shuffled_data_indices = np.random.permutation(n_samp)
+		for batch in range(number_of_batches):
+			sample = shuffled_data_indices[batch*batch_size: batch*batch_size + batch_size]
+			batch_x = train_X[sample][:]
+			batch_y = train_y[sample][:]
+			sess.run(updates, feed_dict={X: batch_x, y: batch_y})
+			train_accuracy = np.mean(np.argmax(train_y, axis=1) == sess.run(predict, feed_dict={X: train_X, y: train_y}))
+			test_accuracy  = np.mean(np.argmax(test_y, axis=1) == sess.run(predict, feed_dict={X: test_X, y: test_y}))
+			#pdb.set_trace()
+			print("Epoch = %4d, Batch %4d, train accuracy = %.2f%%, test accuracy = %.2f%%" % (epoch + 1, batch, 100. * train_accuracy, 100. * test_accuracy))
 	sess.close()
 
 if 0:
