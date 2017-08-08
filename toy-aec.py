@@ -1,25 +1,33 @@
 import tensorflow as tf
 import numpy as np
 import math
+import scipy.io
+
 #import pandas as pd
 #import sys
 
+if 1:
+	tmp = scipy.io.loadmat('data/sample_dataset')
+	input = tmp['visual_features_dataset']
 
-input = np.array([[2.0, 1.0, 1.0, 2.0],
-                 [-2.0, 1.0, -1.0, 2.0],
-                 [0.0, 1.0, 0.0, 2.0],
-                 [0.0, -1.0, 0.0, -2.0],
-                 [0.0, -1.0, 0.0, -2.0]])
+	tmp = scipy.io.loadmat('data/sample_dataset1')
+	input_new = tmp['visual_features_dataset']
+else:
+	input = np.array([[2.0, 1.0, 1.0, 2.0],
+			 [-2.0, 1.0, -1.0, 2.0],
+			 [0.0, 1.0, 0.0, 2.0],
+			 [0.0, -1.0, 0.0, -2.0],
+			 [0.0, -1.0, 0.0, -2.0]])
 
-input_new = np.array([[12.0, 311.0, 11.0, 12.0],
-                 [-12.0, 11.0, -11.0, 12.0],
-                 [130.0, 311.0, 410.0, 12.0],
-                 [10.0, -116.0, 109.0, -152.0],
-                 [210.0, -131.0, 170.0, -182.0]])
+	input_new = np.array([[12.0, 311.0, 11.0, 12.0],
+			 [-12.0, 21.0, -31.0, 12.0],
+			 [130.0, 311.0, 410.0, 12.0],
+			 [10.0, 2116.0, 109.0, -152.0],
+        	         [210.0, -131.0, 170.0, -182.0]])
 # Code here for importing data from file
 
-noisy_input = input + .2 * np.random.random_sample((input.shape)) - .1
-output = input_new
+noisy_input = input + 1.5 * np.random.random_sample((input.shape)) - .1
+output = input_new #input_new: CC/noisy_input:AEC
 
 # Scale to [0,1]
 scaled_input_1 = np.divide((noisy_input-noisy_input.min()), (noisy_input.max()-noisy_input.min()))
@@ -33,8 +41,8 @@ output_data = scaled_output_2
 
 # Autoencoder with 1 hidden layer
 n_samp, input_dim = input_data.shape 
-n_hidden = 2
-
+print "Number of samples %d , dimension %d"%(n_samp, input_dim)
+n_hidden = 3
 x = tf.placeholder("float", [None, input_dim])
 # Weights and biases to hidden layer
 Wh = tf.Variable(tf.random_uniform((input_dim, n_hidden), -1.0 / math.sqrt(input_dim), 1.0 / math.sqrt(input_dim)))
@@ -54,7 +62,7 @@ train_step = tf.train.GradientDescentOptimizer(0.05).minimize(meansq)
 init = tf.initialize_all_variables()
 sess = tf.Session()
 sess.run(init)
-saver = tf.train.Saver()
+#saver = tf.train.Saver()
 
 n_rounds = 5000
 batch_size = min(50, n_samp)
@@ -67,32 +75,42 @@ for i in range(n_rounds):
     if i % 100 == 0:
         print i, sess.run(cross_entropy, feed_dict={x: batch_xs, y_:batch_ys}), sess.run(meansq, feed_dict={x: batch_xs, y_:batch_ys})
 
-save_path = saver.save(sess, "data/model.ckpt")
-print("Model saved in file: %s" % save_path)
-
+#save_path = saver.save(sess, "data/model.ckpt")
+#print("Model saved in file: %s" % save_path)
+print "Input"
+print input_data
 print "Target:"
 print output_data
 print "Final activations:"
 print sess.run(y, feed_dict={x: input_data})
 decoded = sess.run(y, feed_dict={x: input_data})
-print "Final activations: np"
-print decoded
-print "Final weights (input => hidden layer)"
-print sess.run(Wh)
-print "Final biases (input => hidden layer)"
-print sess.run(bh)
-print "Final weights (hidden => output)"
-print sess.run(Wo)
-print "Final biases (hidden layer => output)"
-print sess.run(bo)
+encoded = sess.run(h, feed_dict={x: input_data})
 print "Final activations of hidden layer"
 print sess.run(h, feed_dict={x: input_data})
-acti_hidden = sess.run(h, feed_dict={x: input_data})
-print "Final activations of hidden layer np"
-print acti_hidden
+if 0:
+	print "Final activations: np"
+	print decoded
+	print "Final weights (input => hidden layer)"
+	print sess.run(Wh)
+	print "Final biases (input => hidden layer)"
+	print sess.run(bh)
+	print "Final weights (hidden => output)"
+	print sess.run(Wo)
+	print "Final biases (hidden layer => output)"
+	print sess.run(bo)
+	print "Final activations of hidden layer"
+	print sess.run(h, feed_dict={x: input_data})
+	acti_hidden = sess.run(h, feed_dict={x: input_data})
+	print "Final activations of hidden layer np"
+	print acti_hidden
 
-print('*******************Restoring******************')
-saver.restore(sess, "data/model.ckpt")
-print("Model restored.")
-print "Final weights (input => hidden layer)"
-print sess.run(Wh)
+#print('*******************Restoring******************')
+#saver.restore(sess, "data/model.ckpt")
+#print("Model restored.")
+#print "Final weights (input => hidden layer)"
+#print sess.run(Wh)
+
+scipy.io.savemat('data/toy_input', dict(toy_input=input_data))
+scipy.io.savemat('data/toy_output', dict(toy_output=output_data))
+scipy.io.savemat('data/toy_decoded', dict(toy_decoded=decoded))
+scipy.io.savemat('data/toy_encoded', dict(toy_encoded=encoded))
