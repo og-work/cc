@@ -154,6 +154,7 @@ def function_normalise_data(unnormalised_data):
 	norm_type = 2
 	if norm_type == 1:	
 		print "Normalisation between 0 to 1 ..."
+		raise ValueError('Need to normalise the decoded/encoded features while using')
 		max_val_array = unnormalised_data.max(axis = 0)
 		max_val_array[max_val_array == 0] = 1.
 		max_val_mat = np.tile(max_val_array, (unnormalised_data.shape[0], 1))
@@ -182,6 +183,7 @@ def function_normalise_data(unnormalised_data):
 		
 	else:
 		print "No normalisation ..."
+		raise ValueError('Need to normalise the decoded/encoded features while using')
 		normalised_data = unnormalised_data
 	return normalised_data
 
@@ -202,7 +204,7 @@ def function_get_input_data(obj_input_data):
 		visual_features_dataset = features['features']
 		#visual_features_dataset = visual_features_dataset.transpose()
 		#train_class_labels = np.array([1, 2, 3, 4, 5])#, 8, 10, 11, 13, 15, 17, 21, 28, 29, 31])
-		train_class_labels = np.arange(1, 21, 1)
+		train_class_labels = np.arange(1, 31, 1)
 		test_class_labels = train_class_labels
 	else:
 		tmp = scipy.io.loadmat('data/sample_dataset')
