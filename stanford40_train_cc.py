@@ -165,7 +165,7 @@ def function_train_tensorflow_cc(obj_train_tf_cc_input):
 	cross_entropy = -tf.reduce_sum(y_*tf.log(y))
 	meansq = tf.reduce_mean(tf.square(y_-y))
 	#train_step = tf.train.GradientDescentOptimizer(0.5).minimize(meansq)
-	train_step = tf.train.AdamOptimizer(0.0001).minimize(meansq)
+	train_step = tf.train.AdamOptimizer(0.0005).minimize(meansq)
 	
 	#config = tf.ConfigProto()
 	#config.gpu_options.per_process_gpu_memory_fraction = GPU_PERCENTAGE
@@ -186,7 +186,7 @@ def function_train_tensorflow_cc(obj_train_tf_cc_input):
 		n_rounds = obj_train_tf_cc_input.EPOCHS_CC
 		batch_size = min(16, n_samp)
 		n_samp_valid = obj_train_tf_cc_input.cc1_input_valid_perm.shape[0]
-		batch_size_valid = min(100, n_samp_valid)
+		batch_size_valid = min(16, n_samp_valid)
 		cc1_start = time.time()
 		number_of_batches = int(n_samp / batch_size)
 		print "Number of samples for training the coder %d, batch size %d, number of batches %d"%(n_samp, batch_size, number_of_batches)

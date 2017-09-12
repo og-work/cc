@@ -43,6 +43,8 @@ class input_cc:
 	train_valid_split = np.array([])
 	visual_features = np.array([])
 	dataset_labels = np.array([])
+	dataset_train_labels = np.array([])
+	dataset_test_labels = np.array([])
         min_num_samples_per_class = []
 
 	def function(self):
@@ -53,14 +55,14 @@ def function_get_training_data_cc(obj_input_cc):
 	classI = obj_input_cc.classI
 	classJ = obj_input_cc.classJ
 	TR_TS_VA_SPLIT = obj_input_cc.train_valid_split
-	dataset_labels = obj_input_cc.dataset_labels
+	dataset_train_labels = obj_input_cc.dataset_train_labels
 	visual_features_dataset = obj_input_cc.visual_features
 
 	print "************* Class %d >>> Class %d *************************"%(classI, classJ)
 	MIN_NUMBER_OF_SAMPLES_OF_CLASS = obj_input_cc.min_num_samples_per_class #51 # class27 51 samples for apy class 1-32: 30
 
-	indices_classI_samples = np.flatnonzero(dataset_labels == classI)
-	indices_classJ_samples = np.flatnonzero(dataset_labels == classJ)
+	indices_classI_samples = np.flatnonzero(dataset_train_labels == classI)
+	indices_classJ_samples = np.flatnonzero(dataset_train_labels == classJ)
 
 	if classI == classJ:
 		number_of_samples_classI_for_train = int(TR_TS_VA_SPLIT[0] * np.size(indices_classI_samples))
@@ -146,6 +148,10 @@ class input_data:
 	visual_features_dataset = np.array([])
 	attributes = np.array([])
 	dataset_labels = np.array([])
+	dataset_train_labels = np.array([])
+	dataset_test_labels = np.array([])
+	train_sample_indices = np.array([])
+	test_sample_indices = np.array([])
 	def function(self):
 		print("This is the input_data class")	
 
@@ -195,16 +201,23 @@ def function_get_input_data(obj_input_data):
 		BASE_PATH = "/media/omkar/windows-D-drive/"
 	print(BASE_PATH)
 	if obj_input_data.dataset_name == 'stanford40':
-		path_CNN_features = BASE_PATH + "study/phd-research/data/dataset/stanford-action-40/features/stanford40-data.mat"
-		#path_attributes = BASE_PATH + "/study/phd-research/data/code-data/semantic-similarity/cnn-features/aPY/class_attributes.mat"
-		features = scipy.io.loadmat(path_CNN_features)
-		#attributes_data = scipy.io.loadmat(path_attributes)
-		#attributes = attributes_data['class_attributes']
-		dataset_labels = features['dataset_labels']
-		visual_features_dataset = features['features']
-		#visual_features_dataset = visual_features_dataset.transpose()
-		#train_class_labels = np.array([1, 2, 3, 4, 5])#, 8, 10, 11, 13, 15, 17, 21, 28, 29, 31])
-		train_class_labels = np.arange(1, 31, 1)
+		path_CNN_features = BASE_PATH + "study/phd-research/data/dataset/stanford-action-40/features/stanford40-action-features-9532.mat"
+		path_labels = BASE_PATH + "study/phd-research/data/dataset/stanford-action-40/features/stanford40_dataset_labels.mat"
+		tmp_features = scipy.io.loadmat(path_CNN_features)
+		tmp_labels = scipy.io.loadmat(path_labels)
+		visual_features_dataset = tmp_features['features']
+		dataset_labels = tmp_labels['dataset_labels']
+		dataset_train_labels = tmp_labels['dataset_train_labels']	
+		dataset_test_labels = tmp_labels['dataset_test_labels']	
+		dataset_labels = np.reshape(dataset_labels, (dataset_labels.shape[1], ))
+		train_sample_indices = tmp_labels['final_train_indices']
+		train_sample_indices = np.reshape(train_sample_indices, (train_sample_indices.shape[1],))
+		test_sample_indices = tmp_labels['final_test_indices']
+		test_sample_indices = np.reshape(test_sample_indices, (test_sample_indices.shape[1],))
+		dataset_train_labels = np.reshape(dataset_train_labels, (dataset_train_labels.shape[1], ))
+		dataset_test_labels = np.reshape(dataset_test_labels, (dataset_test_labels.shape[1], ))
+		#train_class_labels = np.array([38, 39, 40])#, 8, 10, 11, 13, 15, 17, 21, 28, 29, 31])
+		train_class_labels = np.arange(1, 41, 1)
 		test_class_labels = train_class_labels
 	else:
 		tmp = scipy.io.loadmat('data/sample_dataset')
@@ -219,6 +232,10 @@ def function_get_input_data(obj_input_data):
 	#obj_input_data.attributes = attributes 
 	obj_input_data.visual_features_dataset = visual_features_dataset
 	obj_input_data.dataset_labels = dataset_labels
+	obj_input_data.dataset_train_labels = dataset_train_labels
+	obj_input_data.dataset_test_labels = dataset_test_labels
+	obj_input_data.train_sample_indices = train_sample_indices - 1
+	obj_input_data.test_sample_indices = test_sample_indices - 1
 
 	return obj_input_data
 

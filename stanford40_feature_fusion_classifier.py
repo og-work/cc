@@ -21,6 +21,7 @@ import math
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 import pdb
+import random
 
 #This function is used if class labels are not continuous like 1 to 10 but arbitrary labels like 2, 4, 8 etc.
 def function_rearrange_labels(train_labels, NUMBER_OF_CLASSES, ground_truth_labels):
@@ -30,17 +31,21 @@ def function_rearrange_labels(train_labels, NUMBER_OF_CLASSES, ground_truth_labe
 		cnt = cnt + 1
 	return train_labels
 
-GROUND_TRUTH_LABELS = np.array([1, 2,3, 4])#np.array([1, 2, 4, 6])
-PERCENTAGE_DROP_OUT1 = 0.2
+PERCENTAGE_DROP_OUT1 = 0.5
 NUMBER_OF_CLASSES = 40
-dim_feature = 50
+dim_feature = 100
 DIM_INPUT = NUMBER_OF_CLASSES * dim_feature#20 for sample data
-DIM_FC1 = int(0.3 * DIM_INPUT)
+DIM_FC1 = int(0.5 * DIM_INPUT)
 #DIM_FC1 = int(0.5 * dim_feature)
-DIM_FC2 = int(0.3 * DIM_FC1)
-SAMPLE_DATA = 0
-EPOCHS = 5
-set_size = 3000
+DIM_FC2 = int(0.5 * DIM_FC1)
+EPOCHS = 100
+LEARNING_RATE = 0.01 
+DECAY = 1e-6 
+MOMENTUM =0.09
+path_cross_features = '../data-stanford40/data14/'
+
+set_size = 4000
+SETWISE_TRAIN = 0
 
 set1_s = 0
 set1_e = set1_s + set_size
@@ -52,39 +57,66 @@ set4_s = set3_e
 set4_e = set4_s + set_size
 set5_s = set4_e
 set5_e = set5_s + set_size
+set6_s = set5_e
+set6_e = set6_s + set_size
 
-path_cross_features = '../data-stanford40/data5/'
-filename = path_cross_features + 'stanford40_50_500_aec_features_all_classes_tr_' + str(NUMBER_OF_CLASSES)
+filename = path_cross_features + 'stanford40_100_500_aec_features_all_classes_tr_' + str(NUMBER_OF_CLASSES)
 tmp = scipy.io.loadmat(filename)
 data_aec_train = tmp['cross_feautures_tr']
+print 'NUmber of training samples %d'%data_aec_train.shape[0]
 
-filename = path_cross_features + 'stanford40_50_500_aec_features_all_classes_ts_' + str(NUMBER_OF_CLASSES)
+filename = path_cross_features + 'stanford40_100_500_aec_features_all_classes_vl_' + str(NUMBER_OF_CLASSES)
+tmp = scipy.io.loadmat(filename)
+data_aec_valid = tmp['cross_feautures_val']
+print 'NUmber of valid samples %d'%data_aec_valid.shape[0]
+
+filename = path_cross_features + 'stanford40_100_500_aec_features_all_classes_ts_' + str(NUMBER_OF_CLASSES)
 tmp = scipy.io.loadmat(filename)
 data_aec_test = tmp['cross_feautures_ts']
+print 'NUmber of testing samples %d'%data_aec_test.shape[0]
 
+data_aec_train_valid = np.vstack((data_aec_train, data_aec_valid))
+#data_aec_train_valid = data_aec_train
 path_cross_features_labels = path_cross_features
 
-filename = path_cross_features_labels + 'stanford40_50_500_feat_fusion_clsfr_train_labels'
+filename = path_cross_features_labels + 'stanford40_100_500_feat_fusion_clsfr_train_labels'
 tmp = scipy.io.loadmat(filename)
 train_labels_all = tmp['train_labels']
 train_labels_all = train_labels_all - 1
-#pdb.set_trace() 
-train_labels1 = train_labels_all[:, set1_s:set1_e]
-train_labels2 = train_labels_all[:, set2_s:set2_e]
-train_labels3 = train_labels_all[:, set3_s:set3_e]
-train_labels4 = train_labels_all[:, set4_s:set4_e]
-train_labels5 = train_labels_all[:, set5_s:set5_e]
+
+filename = path_cross_features_labels + 'stanford40_100_500_feat_fusion_clsfr_valid_labels'
+tmp = scipy.io.loadmat(filename)
+valid_labels_all = tmp['valid_labels']
+valid_labels_all = valid_labels_all - 1
+
+train_valid_labels_all = np.hstack((train_labels_all, valid_labels_all))
+#train_valid_labels_all = train_labels_all
+indices_dummy = np.arange(data_aec_train.shape[0] + data_aec_valid.shape[0])
+#indices_dummy = np.arange(data_aec_train.shape[0])
+shuffled_dummy_ind = random.sample(indices_dummy, (data_aec_train.shape[0] + data_aec_valid.shape[0]))
+#shuffled_dummy_ind = random.sample(indices_dummy, (data_aec_train.shape[0]))
+shuffled_train_valid_labels_all = train_valid_labels_all[0, shuffled_dummy_ind]
+train_valid_labels1 = shuffled_train_valid_labels_all[set1_s:set1_e]
+train_valid_labels2 = shuffled_train_valid_labels_all[set2_s:set2_e]
+train_valid_labels3 = shuffled_train_valid_labels_all[set3_s:set3_e]
+train_valid_labels4 = shuffled_train_valid_labels_all[set4_s:set4_e]
+train_valid_labels5 = shuffled_train_valid_labels_all[set5_s:set5_e]
+
 #TODO:rearrange labels
 #train_labels = function_rearrange_labels(train_labels, NUMBER_OF_CLASSES, GROUND_TRUTH_LABELS) 
-pdb.set_trace()	
-filename = path_cross_features_labels + 'stanford40_50_500_feat_fusion_clsfr_test_labels'
+#pdb.set_trace()	
+filename = path_cross_features_labels + 'stanford40_100_500_feat_fusion_clsfr_test_labels'
 tmp = scipy.io.loadmat(filename)
 test_labels_all = tmp['test_labels']
 test_labels_all = test_labels_all - 1
 
 print "Number of test samples are %d %d"%test_labels_all.shape
 test_labels1 = test_labels_all[:, set1_s:set1_e]
-test_labels2 = test_labels_all[:, set2_s:]
+test_labels2 = test_labels_all[:, set2_s:set2_e]
+test_labels3 = test_labels_all[:, set3_s:set3_e]
+test_labels4 = test_labels_all[:, set4_s:set4_e]
+test_labels5 = test_labels_all[:, set5_s:set5_e]
+test_labels6 = test_labels_all[:, set6_s:]
 #TODO:rearrange labels
 #test_labels = function_rearrange_labels(test_labels, NUMBER_OF_CLASSES, GROUND_TRUTH_LABELS)
 all_classfet = [];
@@ -92,60 +124,117 @@ cnt = 0
 
 #Rearrange cross features to make it classwise group
 for cls in range(NUMBER_OF_CLASSES):
-	filename = path_cross_features + 'stanford40_50_500_cec_features_class_tr_' + str(cls + 1) 
+	filename = path_cross_features + 'stanford40_100_500_cec_features_class_tr_' + str(cls + 1) 
 	print "Loading %s"%filename
 	tmp = scipy.io.loadmat(filename)
 	data_cec_train = tmp['cross_feautures_tr']
 	
-	filename = path_cross_features + 'stanford40_50_500_cec_features_class_ts_' + str(cls + 1) 
+	filename = path_cross_features + 'stanford40_100_500_cec_features_class_vl_' + str(cls + 1) 
+	print "Loading %s"%filename
+	tmp = scipy.io.loadmat(filename)
+	data_cec_valid = tmp['cross_feautures_val']
+	
+	data_cec_train_valid = np.vstack((data_cec_train, data_cec_valid))
+	#data_cec_train_valid = data_cec_train
+	filename = path_cross_features + 'stanford40_100_500_cec_features_class_ts_' + str(cls + 1) 
 	print "Loading %s"%filename
 	tmp = scipy.io.loadmat(filename)
 	data_cec_test = tmp['cross_feautures_ts']
-
+	
 	st_aec = (cls) * dim_feature
 	end_aec = st_aec + dim_feature - 1
 	
-	aef_train1 = data_aec_train[set1_s:set1_e, st_aec:end_aec+1]
-	aef_train2 = data_aec_train[set2_s:set2_e, st_aec:end_aec+1]
-	aef_train3 = data_aec_train[set3_s:set3_e, st_aec:end_aec+1]
-	aef_train4 = data_aec_train[set4_s:set4_e, st_aec:end_aec+1]
-	aef_train5 = data_aec_train[set5_s:set5_e, st_aec:end_aec+1]
+	
+	aef_train1 = data_aec_train_valid[shuffled_dummy_ind[set1_s:set1_e], st_aec:end_aec+1]
+	#aef_valid_all = data_aec_valid[:, st_aec:end_aec+1]
+	aef_test_all = data_aec_test[:, st_aec:end_aec+1]
+
+	if SETWISE_TRAIN:
+		aef_train2 = data_aec_train_valid[shuffled_dummy_ind[set2_s:set2_e], st_aec:end_aec+1]
+		aef_train3 = data_aec_train_valid[shuffled_dummy_ind[set3_s:set3_e], st_aec:end_aec+1]
+		aef_train4 = data_aec_train_valid[shuffled_dummy_ind[set4_s:set4_e], st_aec:end_aec+1]
+		aef_train5 = data_aec_train_valid[shuffled_dummy_ind[set5_s:set5_e], st_aec:end_aec+1]
+	
 	aef_test1 = data_aec_test[set1_s:set1_e, st_aec:end_aec+1]
-	aef_test2 = data_aec_test[set2_s:, st_aec:end_aec+1]
-	cef_train1 = data_cec_train[set1_s:set1_e, :]
-	cef_train2 = data_cec_train[set2_s:set2_e, :]
-	cef_train3 = data_cec_train[set3_s:set3_e, :]
-	cef_train4 = data_cec_train[set4_s:set4_e, :]
-	cef_train5 = data_cec_train[set5_s:set5_e, :]
+	if SETWISE_TRAIN:
+		aef_test2 = data_aec_test[set2_s:set2_e, st_aec:end_aec+1]
+		aef_test3 = data_aec_test[set3_s:set3_e, st_aec:end_aec+1]
+		aef_test4 = data_aec_test[set4_s:set4_e, st_aec:end_aec+1]
+		aef_test5 = data_aec_test[set5_s:set5_e, st_aec:end_aec+1]
+		aef_test6 = data_aec_test[set6_s:, st_aec:end_aec+1]
+	
+	cef_train1 = data_cec_train_valid[shuffled_dummy_ind[set1_s:set1_e], :]
+	#cef_valid_all = data_cec_valid
+	cef_test_all = data_cec_test
+
+	if SETWISE_TRAIN:
+		cef_train2 = data_cec_train_valid[shuffled_dummy_ind[set2_s:set2_e], :]
+		cef_train3 = data_cec_train_valid[shuffled_dummy_ind[set3_s:set3_e], :]
+		cef_train4 = data_cec_train_valid[shuffled_dummy_ind[set4_s:set4_e], :]
+		cef_train5 = data_cec_train_valid[shuffled_dummy_ind[set5_s:set5_e], :]
+	
 	cef_test1 = data_cec_test[set1_s:set1_e, :]
-	cef_test2 = data_cec_test[set2_s:, :]
+	if SETWISE_TRAIN:
+		cef_test2 = data_cec_test[set2_s:set2_e:, :]
+		cef_test3 = data_cec_test[set3_s:set3_e:, :]
+		cef_test4 = data_cec_test[set4_s:set4_e:, :]
+		cef_test5 = data_cec_test[set5_s:set5_e:, :]
+		cef_test6 = data_cec_test[set6_s:, :]
+	
 	classfet_train1 = np.hstack((aef_train1, cef_train1))
-	classfet_train2 = np.hstack((aef_train2, cef_train2))
-	classfet_train3 = np.hstack((aef_train3, cef_train3))
-	classfet_train4 = np.hstack((aef_train4, cef_train4))
-	classfet_train5 = np.hstack((aef_train5, cef_train5))
+	#classfet_valid_all = np.hstack((aef_valid_all, cef_valid_all))
+	classfet_test_all = np.hstack((aef_test_all, cef_test_all))
+
+	if SETWISE_TRAIN:
+		classfet_train2 = np.hstack((aef_train2, cef_train2))
+		classfet_train3 = np.hstack((aef_train3, cef_train3))
+		classfet_train4 = np.hstack((aef_train4, cef_train4))
+		classfet_train5 = np.hstack((aef_train5, cef_train5))
+
 	classfet_test1 = np.hstack((aef_test1, cef_test1))
-	classfet_test2 = np.hstack((aef_test2, cef_test2))
+	if SETWISE_TRAIN:	
+		classfet_test2 = np.hstack((aef_test2, cef_test2))
+		classfet_test3 = np.hstack((aef_test3, cef_test3))
+		classfet_test4 = np.hstack((aef_test4, cef_test4))
+		classfet_test5 = np.hstack((aef_test5, cef_test5))
+		classfet_test6 = np.hstack((aef_test6, cef_test6))
 	#pdb.set_trace()	
 	
 	if cnt == 0:
-		all_classfet_train1 = classfet_train1
-		all_classfet_train2 = classfet_train2
-		all_classfet_train3 = classfet_train3
-		all_classfet_train4 = classfet_train4
-		all_classfet_train5 = classfet_train5
-		all_classfet_test1 = classfet_test1
-		all_classfet_test2 = classfet_test2
 		cnt = 1
+		all_classfet_train1 = classfet_train1
+		#all_classfet_valid_all = classfet_valid_all
+		all_classfet_test_all = classfet_test_all
+		if SETWISE_TRAIN:	
+			all_classfet_train2 = classfet_train2
+			all_classfet_train3 = classfet_train3
+			all_classfet_train4 = classfet_train4
+			all_classfet_train5 = classfet_train5
+		all_classfet_test1 = classfet_test1
+		if SETWISE_TRAIN:
+			all_classfet_test2 = classfet_test2
+			all_classfet_test3 = classfet_test3
+			all_classfet_test4 = classfet_test4
+			all_classfet_test5 = classfet_test5
+			all_classfet_test6 = classfet_test6
 	else:
 		all_classfet_train1 = np.hstack((all_classfet_train1, classfet_train1));
-		all_classfet_train2 = np.hstack((all_classfet_train2, classfet_train2));
-		all_classfet_train3 = np.hstack((all_classfet_train3, classfet_train3));
-		all_classfet_train4 = np.hstack((all_classfet_train4, classfet_train4));
-		all_classfet_train5 = np.hstack((all_classfet_train5, classfet_train5));
+		#all_classfet_valid_all = np.hstack((all_classfet_valid_all, classfet_valid_all));
+		all_classfet_test_all = np.hstack((all_classfet_test_all, classfet_test_all));
+		if SETWISE_TRAIN:
+			all_classfet_train2 = np.hstack((all_classfet_train2, classfet_train2));
+			all_classfet_train3 = np.hstack((all_classfet_train3, classfet_train3));
+			all_classfet_train4 = np.hstack((all_classfet_train4, classfet_train4));
+			all_classfet_train5 = np.hstack((all_classfet_train5, classfet_train5));
+
 		all_classfet_test1 = np.hstack((all_classfet_test1, classfet_test1));
-		all_classfet_test2 = np.hstack((all_classfet_test2, classfet_test2));
-		print "Stacking features for class %d"%cls
+		if SETWISE_TRAIN:
+			all_classfet_test2 = np.hstack((all_classfet_test2, classfet_test2));
+			all_classfet_test3 = np.hstack((all_classfet_test3, classfet_test3));
+			all_classfet_test4 = np.hstack((all_classfet_test4, classfet_test4));
+			all_classfet_test5 = np.hstack((all_classfet_test5, classfet_test5));
+			all_classfet_test6 = np.hstack((all_classfet_test6, classfet_test6));
+	print "Stacking features for class %d"%(cls + 1)
 
 #	end = 0
 #	tr_list = []
@@ -176,13 +265,13 @@ input_1 = Input(shape=(DIM_INPUT,))
 input_2 = Input(shape=(DIM_INPUT,))
 input_3 = Input(shape=(DIM_INPUT,))
 input_4 = Input(shape=(DIM_INPUT,))
+input_5 = Input(shape=(DIM_INPUT,))
+input_6 = Input(shape=(DIM_INPUT,))
+input_7 = Input(shape=(DIM_INPUT,))
+input_8 = Input(shape=(DIM_INPUT,))
+input_9 = Input(shape=(DIM_INPUT,))
+input_10 = Input(shape=(DIM_INPUT,))
 if 1:
-		  input_5 = Input(shape=(DIM_INPUT,))
-		  input_6 = Input(shape=(DIM_INPUT,))
-		  input_7 = Input(shape=(DIM_INPUT,))
-		  input_8 = Input(shape=(DIM_INPUT,))
-		  input_9 = Input(shape=(DIM_INPUT,))
-		  input_10 = Input(shape=(DIM_INPUT,))
 		  input_11 = Input(shape=(DIM_INPUT,))
 		  input_12 = Input(shape=(DIM_INPUT,))
 		  input_13 = Input(shape=(DIM_INPUT,))
@@ -220,13 +309,13 @@ fc1_1 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_1)
 fc1_2 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_2)
 fc1_3 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_3)
 fc1_4 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_4)
+fc1_5 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_5)
+fc1_6 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_6)
+fc1_7 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_7)
+fc1_8 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_8)
+fc1_9 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_9)
+fc1_10 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_10)
 if 1:
-		  fc1_5 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_5)
-		  fc1_6 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_6)
-		  fc1_7 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_7)
-		  fc1_8 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_8)
-		  fc1_9 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_9)
-		  fc1_10 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_10)
 		  fc1_11 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_11)
 		  fc1_12 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_12)
 		  fc1_13 = Dense(DIM_FC1, kernel_initializer='normal', activation='tanh')(input_13)
@@ -286,40 +375,48 @@ input_array = [input_1, input_2, input_3, input_4, input_5,\
 	       input_21, input_22, input_23, input_24, input_25,\
 	       input_26, input_27, input_28, input_29, input_30,\
 	       input_31, input_32, input_33, input_34, input_35,\
-	       input_36, input_37, input_38, input_39, input_40,\
+	       input_36, input_37, input_38, input_39, input_40\
 	      ]
 
 model_feature_fusion = Model(inputs=input_array, outputs=output)
-sgd = SGD(lr=0.005, decay=1e-6, momentum=0.09, nesterov=True)
+sgd = SGD(lr=LEARNING_RATE, decay=DECAY, momentum = MOMENTUM, nesterov=True)
+
 model_feature_fusion.compile(optimizer=sgd,
       loss='categorical_crossentropy',
       metrics=['accuracy'])
 
+
 #Training
-for itr in range(5):
+for itr in range(1):
 	end = 0	
 	tr_list = []
 	if itr == 0:
+		print "*************************"
 		print "Training  set %d"%(itr+1)
 		all_classfet_train_data = all_classfet_train1
-		tr_labels = keras.utils.to_categorical(train_labels1, num_classes=NUMBER_OF_CLASSES)
-	elif itr == 1:
+		tr_labels = keras.utils.to_categorical(train_valid_labels1, num_classes=NUMBER_OF_CLASSES)
+	elif SETWISE_TRAIN == 1 and itr == 1:
+		print "*************************"
 		print "Training  set %d"%(itr+1)
 		all_classfet_train_data = all_classfet_train2
-		tr_labels = keras.utils.to_categorical(train_labels2, num_classes=NUMBER_OF_CLASSES)
-	elif itr == 2:
+		tr_labels = keras.utils.to_categorical(train_valid_labels2, num_classes=NUMBER_OF_CLASSES)
+	elif SETWISE_TRAIN == 1 and itr == 2:
+		print "*************************"
 		print "Training  set %d"%(itr+1)
 		all_classfet_train_data = all_classfet_train3
-		tr_labels = keras.utils.to_categorical(train_labels3, num_classes=NUMBER_OF_CLASSES)
-	elif itr == 3:
+		tr_labels = keras.utils.to_categorical(train_valid_labels3, num_classes=NUMBER_OF_CLASSES)
+	elif SETWISE_TRAIN == 1 and itr == 3:
+		print "*************************"
 		print "Training  set %d"%(itr+1)
 		all_classfet_train_data = all_classfet_train4
-		tr_labels = keras.utils.to_categorical(train_labels4, num_classes=NUMBER_OF_CLASSES)
-	elif itr == 4:
+		tr_labels = keras.utils.to_categorical(train_valid_labels4, num_classes=NUMBER_OF_CLASSES)
+	
+	elif SETWISE_TRAIN == 1 and itr == 4:
+		print "*************************"
 		print "Training  set %d"%(itr+1)
 		all_classfet_train_data = all_classfet_train5
-		tr_labels = keras.utils.to_categorical(train_labels5, num_classes=NUMBER_OF_CLASSES)
-
+		tr_labels = keras.utils.to_categorical(train_valid_labels5, num_classes=NUMBER_OF_CLASSES)
+	
 	for k in range(NUMBER_OF_CLASSES):
 		start = end
 		end = start + NUMBER_OF_CLASSES*dim_feature
@@ -348,22 +445,43 @@ for itr in range(5):
 			    np.array(tr_list[36]), np.array(tr_list[37]),\
 			    np.array(tr_list[38]), np.array(tr_list[39])\
 			   ]  
-	model_feature_fusion.fit(train_data_array, tr_labels, epochs=EPOCHS)
+	model_feature_fusion.fit(train_data_array, tr_labels, epochs=EPOCHS, shuffle=True)
 	print 'Training data (%d, %d)'%(tr_labels.shape[0], tr_data.shape[1])
 	
-for itr in range(2):
+for itr in range(1):
 	end = 0	
 	tr_list = []
 	ts_list = []
 	if itr == 0:
-		print "Testing  set %d"%(itr+1)
-		all_classfet_test_data = all_classfet_test1
-		ts_labels = keras.utils.to_categorical(test_labels1, num_classes=NUMBER_OF_CLASSES)
-	elif itr == 1:
+		print "*************************"
+		#print "validation  set %d"%(itr+1)
+		all_classfet_test_data = all_classfet_test_all
+		ts_labels = keras.utils.to_categorical(test_labels_all, num_classes=NUMBER_OF_CLASSES)
+	elif SETWISE_TRAIN == 1 and itr == 1:
+		print "*************************"
 		print "Testing  set %d"%(itr+1)
 		all_classfet_test_data = all_classfet_test2
 		ts_labels = keras.utils.to_categorical(test_labels2, num_classes=NUMBER_OF_CLASSES)
-
+	elif SETWISE_TRAIN == 1 and itr == 2:
+		print "*************************"
+		print "Testing  set %d"%(itr+1)
+		all_classfet_test_data = all_classfet_test3
+		ts_labels = keras.utils.to_categorical(test_labels3, num_classes=NUMBER_OF_CLASSES)
+	elif SETWISE_TRAIN == 1 and itr == 3:
+		print "*************************"
+		print "Testing  set %d"%(itr+1)
+		all_classfet_test_data = all_classfet_test4
+		ts_labels = keras.utils.to_categorical(test_labels4, num_classes=NUMBER_OF_CLASSES)
+	elif SETWISE_TRAIN == 1 and itr == 4:
+		print "*************************"
+		print "Testing  set %d"%(itr+1)
+		all_classfet_test_data = all_classfet_test5
+		ts_labels = keras.utils.to_categorical(test_labels5, num_classes=NUMBER_OF_CLASSES)
+	elif SETWISE_TRAIN == 1 and itr == 5:
+		print "*************************"
+		print "Testing  set %d"%(itr+1)
+		all_classfet_test_data = all_classfet_test6
+		ts_labels = keras.utils.to_categorical(test_labels6, num_classes=NUMBER_OF_CLASSES)
 	for k in range(NUMBER_OF_CLASSES):
 		start = end
 		end = start + NUMBER_OF_CLASSES*dim_feature
@@ -372,7 +490,7 @@ for itr in range(2):
 
 
 	print "Building test input"
-	test_data_array = [np.array(ts_list[0]), np.array(ts_list[1]),\
+	test_data_array = [np.array(ts_list[0]),  np.array(ts_list[1]),\
 			    np.array(ts_list[2]), np.array(ts_list[3]),\
 			    np.array(ts_list[4]), np.array(ts_list[5]),\
 			    np.array(ts_list[6]), np.array(ts_list[7]),\
@@ -391,7 +509,7 @@ for itr in range(2):
 			    np.array(ts_list[32]), np.array(ts_list[33]),\
 			    np.array(ts_list[34]), np.array(ts_list[35]),\
 			    np.array(ts_list[36]), np.array(ts_list[37]),\
-			    np.array(ts_list[38]), np.array(ts_list[39]),\
+			    np.array(ts_list[38]), np.array(ts_list[39])\
 			   ]
 
 	score = model_feature_fusion.evaluate(test_data_array, ts_labels, batch_size=4)
@@ -402,6 +520,6 @@ for itr in range(2):
 	print('AccuracyFusion: ', score)
 	print 'Testing data (%d, %d)'%(ts_labels.shape[0], ts_data.shape[1])
 
-print 'Mean Accuracy %.2f'%np.mean(accuracy_array, axis=0)
-print 'Std Accuracy %.2f'%np.std(accuracy_array, axis=0)
+#print 'Mean Accuracy %.2f'%np.mean(accuracy_array, axis=0)
+#print 'Std Accuracy %.2f'%np.std(accuracy_array, axis=0)
 

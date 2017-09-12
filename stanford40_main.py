@@ -35,22 +35,22 @@ from stanford40_train_cc import classifier_output, function_train_classifier_for
 print "*****************************************************************************************************************************************"
 #written from jup to noraml
 # In[2]:
-EPOCHS = 2
-EPOCHS_CC = 2
+EPOCHS = 3
+EPOCHS_CC = 3
 BATCH_SIZE = 128
 BATCH_SIZE_CC = 128
-TR_TS_VA_SPLIT = np.array([0.6, 0.2, 0.2])
+TR_VA_SPLIT = np.array([0.7, 0.3])
 MIN_NUMBER_OF_SAMPLES_ACROSS_CLASSES = 50
-NOISE_FACTOR = 0.1
+NOISE_FACTOR = 0.05
 INCREASE_FACTOR_CAE = 100
 dataset_list = ['sample_wt', 'stanford40']
 DATASET_INDEX = 1
 system_list = ['desktop', 'laptop']
 SYSTEM_INDEX = 0
 #DATA_SAVE_PATH = '/home/SharedData/omkar/data/'
-DATA_SAVE_PATH = '../data-stanford40/data6/'
+DATA_SAVE_PATH = '../data-stanford40/data14/'
 USE_ENCODER_FEATURES = 1
-DO_PCA = 1
+DO_PCA = 0
 #Prepare encoder model...................
 if DATASET_INDEX == 0:
 	dimension_hidden_layer1_coder = 6
@@ -58,8 +58,8 @@ if DATASET_INDEX == 0:
 	min_num_samples_per_class = 10
 else:
 	REDUCED_DIMENSION_VISUAL_FEATURE = 500 
-	dimension_hidden_layer1_coder = int(REDUCED_DIMENSION_VISUAL_FEATURE / 10)
-	min_num_samples_per_class = 323 #class 38
+	dimension_hidden_layer1_coder = int(REDUCED_DIMENSION_VISUAL_FEATURE / 5)
+	min_num_samples_per_class = 100 #class 38
 	
 #Load input data..................................
 obj_input_data = input_data()
@@ -67,25 +67,29 @@ obj_input_data.dataset_name = dataset_list[DATASET_INDEX]
 obj_input_data.system_type = system_list[SYSTEM_INDEX]
 
 obj_input_data = function_get_input_data(obj_input_data)
-#pdb.set_trace()
 visual_features_dataset_ori = obj_input_data.visual_features_dataset
 train_class_labels = obj_input_data.train_class_labels
 test_class_labels = obj_input_data.test_class_labels
 attributes = obj_input_data.attributes
 dataset_labels = obj_input_data.dataset_labels
-
+dataset_train_labels = obj_input_data.dataset_train_labels
+dataset_test_labels = obj_input_data.dataset_test_labels
+train_sample_indices = obj_input_data.train_sample_indices
+test_sample_indices = obj_input_data.test_sample_indices
 visual_features_dataset = visual_features_dataset_ori
-
 #visual_features_dataset = function_normalise_data(visual_features_dataset)
 number_of_train_classes = np.size(train_class_labels)
 number_of_test_classes = np.size(test_class_labels)
 dimension_visual_data = visual_features_dataset.shape[1]
 number_of_samples_dataset = visual_features_dataset.shape[0]
-#dimension_attributes = attributes.shape[1]
+number_of_training_samples = train_sample_indices.shape[0]
+number_of_testing_samples = test_sample_indices.shape[0]
 number_of_classes = attributes.shape[0]
 print "Dataset visual features shape is: %d X %d" % visual_features_dataset.shape
 print "Dimension of visual data: %d" %dimension_visual_data
 print "Number of dataset samples: %d" %number_of_samples_dataset
+print "Number of training samples: %d" %number_of_training_samples
+print "Number of testing samples: %d" %number_of_testing_samples
 #print "Dimension of attributes: %d" %dimension_attributes
 print "Number of classes: %d" %number_of_classes
 print "Train classes are"
@@ -103,50 +107,74 @@ print "Number of c coders %d "%number_of_cc
 cross_coders_train_data_input = []
 cross_coders_train_data_output = []
 
-# In[ ]:
-
 #Get mean feature vector for each class
 mean_feature_mat = np.empty((0, dimension_visual_data), float)
 number_of_samples_per_class_train = []
 number_of_samples_per_class_test = []
 number_of_samples_per_class_valid = []
 
-#pdb.set_trace()
 obj_classifier = classifier_data()
 cnt = 0
+#NOTE: TO BE REMOVED        
+visual_features_dataset_PCAed_unnorm = function_reduce_dimension_of_data(visual_features_dataset, visual_features_dataset, REDUCED_DIMENSION_VISUAL_FEATURE)
+visual_features_dataset_PCAed = function_normalise_data(visual_features_dataset_PCAed_unnorm)
+visual_features_dataset = visual_features_dataset_PCAed
+
+
+if 0:
+	#NOTE:Issue with following logic is that outof 4000 training samples first 0.7*4000 are trainig and rema
+	#remaining are valid. We are not splitting classwise. 
+	train_valid_data = visual_features_dataset[train_sample_indices, :]
+	obj_classifier.train_data = train_valid_data[:int(TR_VA_SPLIT[0] * train_valid_data.shape[0]), :]
+	obj_classifier.valid_data = train_valid_data[int(TR_VA_SPLIT[0] * train_valid_data.shape[0]):, :]
+	train_valid_labels = dataset_labels[train_sample_indices]
+	obj_classifier.train_labels = train_valid_labels[:int(TR_VA_SPLIT[0] * train_valid_labels.shape[0])]
+	obj_classifier.valid_labels = train_valid_labels[int(TR_VA_SPLIT[0] * train_valid_labels.shape[0]):]
+	obj_classifier.test_data = visual_features_dataset[test_sample_indices, :]
+	obj_classifier.test_labels = dataset_labels[test_sample_indices]
+
+
+cnt = 0
 for classI in train_class_labels:
-	indices = np.flatnonzero(dataset_labels == classI)
-	classI_features = visual_features_dataset[indices.astype(int), :]
-	mean_feature = classI_features.mean(0)
-	mean_feature_mat = np.append(mean_feature_mat, mean_feature.reshape(1, dimension_visual_data), axis = 0)	
-	number_of_samples_per_class_train.append(int(TR_TS_VA_SPLIT[0] * np.size(indices))) 
-	number_of_samples_per_class_test.append(int(TR_TS_VA_SPLIT[2] * np.size(indices))) 
-	number_of_samples_per_class_valid.append(int(TR_TS_VA_SPLIT[1] * np.size(indices)))
+	print "Stacking tr/val/ts data for class %d"%classI 
+	train_val_indices = np.flatnonzero(dataset_train_labels == classI)
+	test_indices = np.flatnonzero(dataset_test_labels == classI)
+	classI_train_val_features = visual_features_dataset[train_val_indices.astype(int), :]
+	classI_test_features = visual_features_dataset[test_indices.astype(int), :]
+	#mean_feature = classI_features.mean(0)
+	#mean_feature_mat = np.append(mean_feature_mat, mean_feature.reshape(1, dimension_visual_data), axis = 0)	
+	number_of_samples_per_class_train.append(int(TR_VA_SPLIT[0] * np.size(train_val_indices))) 
+	number_of_samples_per_class_valid.append(int(TR_VA_SPLIT[1] * np.size(train_val_indices)))
+	number_of_samples_per_class_test.append(np.size(test_indices)) 
 	start_vl = number_of_samples_per_class_train[-1]
 	end_vl = start_vl + number_of_samples_per_class_valid[-1]
-	start_ts = end_vl
+	start_ts = 0
 	end_ts = start_ts + number_of_samples_per_class_test[-1]
 	if cnt == 0:
 		cnt = 1	
-		obj_classifier.train_data = classI_features[:number_of_samples_per_class_train[-1], :] 
-		obj_classifier.valid_data = classI_features[start_vl:end_vl, :] 
-		obj_classifier.test_data = classI_features[start_ts:end_ts, :] 
+		obj_classifier.train_data = classI_train_val_features[:number_of_samples_per_class_train[-1], :] 
+		obj_classifier.valid_data = classI_train_val_features[start_vl:end_vl, :] 
+		obj_classifier.test_data = classI_test_features[start_ts:end_ts, :] 
 		obj_classifier.train_labels = np.full((1, number_of_samples_per_class_train[-1]), classI, dtype=int) 
 		obj_classifier.valid_labels = np.full((1, number_of_samples_per_class_valid[-1]), classI, dtype=int) 
 		obj_classifier.test_labels = np.full((1, number_of_samples_per_class_test[-1]), classI, dtype=int) 
+		train_valid_indices_all_classes = train_val_indices
+		test_indices_all_classes = test_indices
 	else:	
-		obj_classifier.train_data = np.vstack((obj_classifier.train_data, classI_features[:number_of_samples_per_class_train[-1], :])) 
-		obj_classifier.valid_data = np.vstack((obj_classifier.valid_data, classI_features[start_vl:end_vl, :])) 
-		obj_classifier.test_data = np.vstack((obj_classifier.test_data, classI_features[start_ts:end_ts, :])) 
+		obj_classifier.train_data = np.vstack((obj_classifier.train_data, classI_train_val_features[:number_of_samples_per_class_train[-1], :])) 
+		obj_classifier.valid_data = np.vstack((obj_classifier.valid_data, classI_train_val_features[start_vl:end_vl, :])) 
+		obj_classifier.test_data = np.vstack((obj_classifier.test_data, classI_test_features[start_ts:end_ts, :])) 
 		obj_classifier.train_labels = np.hstack((obj_classifier.train_labels, np.full((1, number_of_samples_per_class_train[-1]), classI, dtype=int))) 
 		obj_classifier.valid_labels = np.hstack((obj_classifier.valid_labels, np.full((1, number_of_samples_per_class_valid[-1]), classI, dtype=int))) 
 		obj_classifier.test_labels = np.hstack((obj_classifier.test_labels, np.full((1, number_of_samples_per_class_test[-1]), classI, dtype=int))) 
 
-
+		train_valid_indices_all_classes = np.hstack((train_valid_indices_all_classes, train_val_indices))
+		test_indices_all_classes = np.hstack((test_indices_all_classes, test_indices))
 #PCA
 if DO_PCA:
 	print "Doing PCA on training-validation set and applying on test set."
 	train_valid_data = np.vstack((obj_classifier.train_data, obj_classifier.valid_data))
+	n_samples_before_pca = train_valid_data.shape[0]
         train_valid_test_data_PCAed = function_reduce_dimension_of_data(train_valid_data, obj_classifier.test_data, REDUCED_DIMENSION_VISUAL_FEATURE)
 	start = 0
 	end = obj_classifier.train_labels.shape[1] + obj_classifier.valid_labels.shape[1]
@@ -167,9 +195,26 @@ if DO_PCA:
 	obj_classifier.test_data = function_normalise_data(obj_classifier.test_data)
 else:
 	print "*NOT* doing PCA...."
-        
-visual_features_dataset_PCAed = np.vstack((obj_classifier.train_data, obj_classifier.valid_data))
-visual_features_dataset_PCAed = np.vstack((visual_features_dataset_PCAed, obj_classifier.test_data))
+#visual_features_dataset_PCAed_shuff = np.vstack((obj_classifier.train_data, obj_classifier.valid_data))
+#n_samples_after_pca = visual_features_dataset_PCAed_shuff.shape[0]
+#visual_features_dataset_PCAed_shuff = np.vstack((visual_features_dataset_PCAed_shuff, obj_classifier.test_data))
+
+#Rearrange PCAed feature as per original dataset 
+if 0:
+	p = 0
+	visual_features_dataset_PCAed = np.zeros(visual_features_dataset_PCAed_shuff.shape, dtype=float)
+	for k in train_valid_indices_all_classes:
+		visual_features_dataset_PCAed[k, :] = visual_features_dataset_PCAed_shuff[p, :]
+		p = p+1
+
+	for k in test_indices_all_classes:
+		visual_features_dataset_PCAed[k, :] = visual_features_dataset_PCAed_shuff[p, :]
+		p = p+1
+
+	if visual_features_dataset_PCAed.shape[1] != REDUCED_DIMENSION_VISUAL_FEATURE or n_samples_after_pca != n_samples_before_pca:
+		print visual_features_dataset_PCAed.shape        
+		raise ValueError('Issue with PCA')
+	
 
 base_filename = DATA_SAVE_PATH + dataset_list[DATASET_INDEX] + '_' + str(dimension_hidden_layer1_coder) + '_' + str(REDUCED_DIMENSION_VISUAL_FEATURE) + '_'
 exp_name = 'feat_fusion_clsfr_'
@@ -206,7 +251,7 @@ cnt = 0
 #...........................AEC.....................................
 #...........................AEC.....................................
 #...........................AEC.....................................
-if 1:
+if 0:
 	for classI in train_class_labels:
 		print "**************************************"
 		classJ = classI	
@@ -216,8 +261,10 @@ if 1:
 		obj_input_cc.classI = classI
 		obj_input_cc.classJ = classJ
 		obj_input_cc.visual_features = visual_features_dataset_PCAed
-		obj_input_cc.train_valid_split = TR_TS_VA_SPLIT
+		obj_input_cc.train_valid_split = TR_VA_SPLIT
 		obj_input_cc.dataset_labels = dataset_labels
+		obj_input_cc.dataset_train_labels = dataset_train_labels
+		obj_input_cc.dataset_test_labels = dataset_test_labels
 		obj_input_cc.min_num_samples_per_class = min_num_samples_per_class
 
 	  
@@ -252,7 +299,7 @@ if 1:
 		obj_train_tf_cc_input.cc1_output_valid_perm = function_normalise_data(obj_cc1_train_valid_data.output_valid_perm)
 		obj_train_tf_cc_input.obj_classifier = obj_classifier
 		obj_train_tf_cc_input.dimension_hidden_layer1 = dimension_hidden_layer1_coder
-		obj_train_tf_cc_input.EPOCHS_CC = EPOCHS_CC
+		obj_train_tf_cc_input.EPOCHS_CC = EPOCHS
 		obj_train_tf_cc_output = function_train_tensorflow_cc(obj_train_tf_cc_input)
 		#obj_train_tf_cc_output = function_train_keras_cc(obj_train_tf_cc_input)
 		
@@ -307,96 +354,105 @@ if 1:
 
 for classI in train_class_labels:
 	cnt = 0 #NOTE: cnt is made zero in order to save cross features for each class in different file
-	for classJ in train_class_labels:
-		if (classI != classJ):
-			print "**************************************"
-			#Get data for training CEC.........................
-			cc1_start = time.time()
-			obj_input_cc = input_cc()
-			obj_input_cc.classI = classI
-			obj_input_cc.classJ = classJ
-			obj_input_cc.visual_features = visual_features_dataset_PCAed
-			obj_input_cc.train_valid_split = TR_TS_VA_SPLIT
-			obj_input_cc.dataset_labels = dataset_labels
-			obj_input_cc.min_num_samples_per_class = min_num_samples_per_class
-		  
-			obj_cc1_train_valid_data = function_get_training_data_cc(obj_input_cc)
-			cc1_input_train_perm = obj_cc1_train_valid_data.input_train_perm
-			INCREASE_FACTOR_CAE = int(90000 / cc1_input_train_perm.shape[0])
-			print "Increase factor for CEC is %d"%(INCREASE_FACTOR_CAE)
-			cc1_input_train_perm = np.tile(cc1_input_train_perm, (INCREASE_FACTOR_CAE, 1))
-			cc1_input_train_perm = cc1_input_train_perm + NOISE_FACTOR * np.random.normal(0, 1, cc1_input_train_perm.shape)
-			cc1_input_train_perm = function_normalise_data(cc1_input_train_perm)
+	#check if cross-features already calculated
+	exp_name = 'cec_features_class_' 
+	filename = base_filename + exp_name + 'tr_' + str(classI) + '.mat'		
+	if not os.path.isfile(filename):
+		print "%s does not exist. Finding cross features for class %d"%(filename, classI)
+		for classJ in train_class_labels:
+			if (classI != classJ):
+				print "**************************************"
+				#Get data for training CEC.........................
+				cc1_start = time.time()
+				obj_input_cc = input_cc()
+				obj_input_cc.classI = classI
+				obj_input_cc.classJ = classJ
+				obj_input_cc.visual_features = visual_features_dataset_PCAed
+				obj_input_cc.train_valid_split = TR_VA_SPLIT
+				obj_input_cc.dataset_labels = dataset_labels
+				obj_input_cc.dataset_train_labels = dataset_train_labels
+				obj_input_cc.dataset_test_labels = dataset_test_labels
+				obj_input_cc.min_num_samples_per_class = min_num_samples_per_class
+			  
+				obj_cc1_train_valid_data = function_get_training_data_cc(obj_input_cc)
+				cc1_input_train_perm = obj_cc1_train_valid_data.input_train_perm
+				INCREASE_FACTOR_CAE = int(90000 / cc1_input_train_perm.shape[0])
+				print "Increase factor for CEC is %d"%(INCREASE_FACTOR_CAE)
+				cc1_input_train_perm = np.tile(cc1_input_train_perm, (INCREASE_FACTOR_CAE, 1))
+				cc1_input_train_perm = cc1_input_train_perm + NOISE_FACTOR * np.random.normal(0, 1, cc1_input_train_perm.shape)
+				cc1_input_train_perm = function_normalise_data(cc1_input_train_perm)
 
-			if classI == classJ:
-				cc1_output_train_perm = cc1_input_train_perm
-			else:	
-				cc1_output_train_perm  = obj_cc1_train_valid_data.output_train_perm
-				cc1_output_train_perm = np.tile(cc1_output_train_perm, (INCREASE_FACTOR_CAE, 1))
-				cc1_output_train_perm = cc1_output_train_perm + NOISE_FACTOR * np.random.normal(0, 1, cc1_output_train_perm.shape)
-				cc1_output_train_perm = function_normalise_data(cc1_output_train_perm)
+				if classI == classJ:
+					cc1_output_train_perm = cc1_input_train_perm
+				else:	
+					cc1_output_train_perm  = obj_cc1_train_valid_data.output_train_perm
+					cc1_output_train_perm = np.tile(cc1_output_train_perm, (INCREASE_FACTOR_CAE, 1))
+					cc1_output_train_perm = cc1_output_train_perm + NOISE_FACTOR * np.random.normal(0, 1, cc1_output_train_perm.shape)
+					cc1_output_train_perm = function_normalise_data(cc1_output_train_perm)
 
-			#Train tensorflow cc.....................................
-			print "Training cc over %d samples"%(cc1_input_train_perm.shape[0])
-			#pdb.set_trace()
-			obj_train_tf_cc_input = train_tf_cc_input()
-			obj_train_tf_cc_input.classI = classI
-			obj_train_tf_cc_input.classJ = classJ
-			obj_train_tf_cc_input.dataset_name = dataset_list[DATASET_INDEX] 
-			obj_train_tf_cc_input.data_save_path = DATA_SAVE_PATH 
-			obj_train_tf_cc_input.dim_feature = visual_features_dataset.shape[1]
-			obj_train_tf_cc_input.cc1_input_train_perm = cc1_input_train_perm
-			obj_train_tf_cc_input.cc1_output_train_perm = cc1_output_train_perm
-			obj_train_tf_cc_input.cc1_input_valid_perm = function_normalise_data(obj_cc1_train_valid_data.input_valid_perm)
-			obj_train_tf_cc_input.cc1_output_valid_perm = function_normalise_data(obj_cc1_train_valid_data.output_valid_perm)
-			obj_train_tf_cc_input.obj_classifier = obj_classifier
-			obj_train_tf_cc_input.dimension_hidden_layer1 = dimension_hidden_layer1_coder
-			obj_train_tf_cc_input.EPOCHS_CC = EPOCHS_CC
-			obj_train_tf_cc_output = function_train_tensorflow_cc(obj_train_tf_cc_input)
-			#obj_train_tf_cc_output = function_train_keras_cc(obj_train_tf_cc_input)
-			
-		  #pdb.set_trace()			
-		  #COncatenate features
-			if cnt == 0:
-				cnt = 1
-				if USE_ENCODER_FEATURES:
-					print "Using encoded features"
-					cross_features_train = function_normalise_data(obj_train_tf_cc_output.encoded_data_train_cc1)
-					cross_features_valid = function_normalise_data(obj_train_tf_cc_output.encoded_data_valid_cc1)
-					cross_features_test = function_normalise_data(obj_train_tf_cc_output.encoded_data_test_cc1)
+				#Train tensorflow cc.....................................
+				print "Training cc over %d samples"%(cc1_input_train_perm.shape[0])
+				#pdb.set_trace()
+				obj_train_tf_cc_input = train_tf_cc_input()
+				obj_train_tf_cc_input.classI = classI
+				obj_train_tf_cc_input.classJ = classJ
+				obj_train_tf_cc_input.dataset_name = dataset_list[DATASET_INDEX] 
+				obj_train_tf_cc_input.data_save_path = DATA_SAVE_PATH 
+				obj_train_tf_cc_input.dim_feature = visual_features_dataset.shape[1]
+				obj_train_tf_cc_input.cc1_input_train_perm = cc1_input_train_perm
+				obj_train_tf_cc_input.cc1_output_train_perm = cc1_output_train_perm
+				obj_train_tf_cc_input.cc1_input_valid_perm = function_normalise_data(obj_cc1_train_valid_data.input_valid_perm)
+				obj_train_tf_cc_input.cc1_output_valid_perm = function_normalise_data(obj_cc1_train_valid_data.output_valid_perm)
+				obj_train_tf_cc_input.obj_classifier = obj_classifier
+				obj_train_tf_cc_input.dimension_hidden_layer1 = dimension_hidden_layer1_coder
+				obj_train_tf_cc_input.EPOCHS_CC = EPOCHS_CC
+				obj_train_tf_cc_output = function_train_tensorflow_cc(obj_train_tf_cc_input)
+				#obj_train_tf_cc_output = function_train_keras_cc(obj_train_tf_cc_input)
+				
+				  #pdb.set_trace()			
+			  #COncatenate features
+				if cnt == 0:
+					cnt = 1
+					if USE_ENCODER_FEATURES:
+						print "Using encoded features"
+						cross_features_train = function_normalise_data(obj_train_tf_cc_output.encoded_data_train_cc1)
+						cross_features_valid = function_normalise_data(obj_train_tf_cc_output.encoded_data_valid_cc1)
+						cross_features_test = function_normalise_data(obj_train_tf_cc_output.encoded_data_test_cc1)
+					else:
+						print "Using decoded features"
+						cross_features_train = obj_train_tf_cc_output.decoded_data_train_cc1
+						cross_features_valid = obj_train_tf_cc_output.decoded_data_valid_cc1
+						cross_features_test = obj_train_tf_cc_output.decoded_data_test_cc1
 				else:
-					print "Using decoded features"
-					cross_features_train = obj_train_tf_cc_output.decoded_data_train_cc1
-					cross_features_valid = obj_train_tf_cc_output.decoded_data_valid_cc1
-					cross_features_test = obj_train_tf_cc_output.decoded_data_test_cc1
-			else:
-				if USE_ENCODER_FEATURES:
-					print "Using enco:ded features"
-					cross_features_train = np.hstack((cross_features_train, function_normalise_data(obj_train_tf_cc_output.encoded_data_train_cc1)))
-					cross_features_valid = np.hstack((cross_features_valid, function_normalise_data(obj_train_tf_cc_output.encoded_data_valid_cc1)))
-					cross_features_test = np.hstack((cross_features_test, function_normalise_data(obj_train_tf_cc_output.encoded_data_test_cc1)))
-				else:
-					print "Using decoded features"
-					cross_features_train = np.hstack((cross_features_train, obj_train_tf_cc_output.decoded_data_train_cc1))
-					cross_features_valid = np.hstack((cross_features_valid, obj_train_tf_cc_output.decoded_data_valid_cc1))
-					cross_features_test = np.hstack((cross_features_test, obj_train_tf_cc_output.decoded_data_test_cc1))
-		cc_end = time.time() 
-	if 1:
-		#Saving cross features
-		exp_name = 'cec_features_class_' 
-		filename = base_filename + exp_name + 'tr_' + str(classI)		
-		print"Saving cross features *train data* for class %d ...%s"%(classI, filename)
-		scipy.io.savemat(filename, dict(cross_feautures_tr = cross_features_train))
-			
-		filename = base_filename + exp_name + 'vl_' + str(classI)		
-		print"Saving cross features *valid data* for class %d ...%s"%(classI, filename)
-		scipy.io.savemat(filename, dict(cross_feautures_val = cross_features_valid))
+					if USE_ENCODER_FEATURES:
+						print "Using enco:ded features"
+						cross_features_train = np.hstack((cross_features_train, function_normalise_data(obj_train_tf_cc_output.encoded_data_train_cc1)))
+						cross_features_valid = np.hstack((cross_features_valid, function_normalise_data(obj_train_tf_cc_output.encoded_data_valid_cc1)))
+						cross_features_test = np.hstack((cross_features_test, function_normalise_data(obj_train_tf_cc_output.encoded_data_test_cc1)))
+					else:
+						print "Using decoded features"
+						cross_features_train = np.hstack((cross_features_train, obj_train_tf_cc_output.decoded_data_train_cc1))
+						cross_features_valid = np.hstack((cross_features_valid, obj_train_tf_cc_output.decoded_data_valid_cc1))
+						cross_features_test = np.hstack((cross_features_test, obj_train_tf_cc_output.decoded_data_test_cc1))
+			cc_end = time.time() 
+		if 1:
+			#Saving cross features
+			exp_name = 'cec_features_class_' 
+			filename = base_filename + exp_name + 'tr_' + str(classI)		
+			print"Saving cross features *train data* for class %d ...%s"%(classI, filename)
+			scipy.io.savemat(filename, dict(cross_feautures_tr = cross_features_train))
+				
+			filename = base_filename + exp_name + 'vl_' + str(classI)		
+			print"Saving cross features *valid data* for class %d ...%s"%(classI, filename)
+			scipy.io.savemat(filename, dict(cross_feautures_val = cross_features_valid))
 		
-		filename = base_filename + exp_name + 'ts_' + str(classI)		
-		print"Saving cross features *test data* for class %d ...%s"%(classI, filename)
-		scipy.io.savemat(filename, dict(cross_feautures_ts = cross_features_test))
-		print "Processing time for cc %f"%((cc_end - cc_start))
-		
+			filename = base_filename + exp_name + 'ts_' + str(classI)		
+			print"Saving cross features *test data* for class %d ...%s"%(classI, filename)
+			scipy.io.savemat(filename, dict(cross_feautures_ts = cross_features_test))
+			print "Processing time for cc %f"%((cc_end - cc_start))
+	else:
+		print "Cross features %s exists. Skipping..."%(filename)			
+#**********************************	
 	
 # In[ ]:
 cross_features_tr_val_ts = np.vstack((cross_features_train, cross_features_valid))
