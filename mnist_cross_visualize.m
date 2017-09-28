@@ -7,7 +7,7 @@ clc
 %test_labels = load('mnist_39_784_feat_fusion_clsfr_test_labels');
 %n_valid_samples = size(valid_labels.valid_labels,2);
 
-valid_data = load('mnist_5_784_cnn_svm_784_dim_valid_data');
+valid_data = load('mnist_25_784_cnn_svm_784_dim_valid_data');
 indices = [1 2000 4600 6386 7570 9560 11000 12716 15000 17000];
 
 %Display cross-encoder outputs
@@ -22,7 +22,7 @@ if 1
         isDisplayed = 0;
         k = 1;%train_data = load('mnist_39_784_cec_features_class_tr_5');
         
-        filename = strcat('mnist_5_784_cec_features_class_vl_', num2str(cc));
+        filename = strcat('mnist_25_784_cec_features_class_vl_', num2str(cc));
         title_string = strcat('Cross coder from input class: ', num2str(cc));
         suptitle(title_string);
         
@@ -64,7 +64,7 @@ if 1
     isDisplayed = 0;
     k = 1;%train_data = load('mnist_39_784_cec_features_class_tr_5');
     
-    filename = strcat('mnist_5_784_aec_features_all_classes_vl_', num2str(9));
+    filename = strcat('mnist_25_784_aec_features_all_classes_vl_', num2str(9));
     title_string = strcat('Auto encoder from input class: ', num2str(9));
     suptitle(title_string);
     
