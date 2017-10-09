@@ -33,58 +33,60 @@ gap_x = 10;
 % endy = patchy + h;
 % patch_11 = im11(startx:endx, starty:endy, :);
 
+
+%load('/home/omkar/Documents/cvpr_cc_9_to_all');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% im20 = imread('CC_2_0_epoch_990.png');
-% imshow(im20);
-% digit_20 = function_crop_img(381, 920, w, h, im20);
-% figure;imshow(digit_20);
-% 
-im21 = imread('CC_2_1_epoch_990.png');
-imshow(im21)
-digit_21 = function_crop_img(382, 636, w, h, im21);
-figure;imshow(digit_21);
+% im10 = imread('CC_1_0_epoch_990.png');
+% imshow(im10);
+% digit_10 = function_crop_img(381, 542, w, h, im10);
+% figure;imshow(digit_10);
 
-%im22 = imread('CC_2_2_epoch_990.png');
-%imshow(im22);
-%digit_22 = function_crop_img(186, 542, w, h, im22);
-%figure;imshow(digit_22);
+% im11 = imread('CC_1_1_epoch_990.png');
+% imshow(im11)
+% digit_11 = function_crop_img(381, 352, w, h, im11);
+% figure;imshow(digit_11);
 
-% im23 = imread('CC_2_3_epoch_990.png');
-% imshow(im23);
-% digit_23 = function_crop_img(381, 447, w, h, im23);
-% figure;imshow(digit_23);
+% im12 = imread('CC_1_2_epoch_990.png');
+% imshow(im12);
+% digit_12 = function_crop_img(837, 258, w, h, im12);
+% figure;imshow(digit_12);
 
-% im24 = imread('CC_2_4_epoch_990.png');
-% imshow(im24);
-% digit_24 = function_crop_img(382, 443, w, h, im24);
-% figure;imshow(digit_24);
+% im13 = imread('CC_1_3_epoch_990.png');
+% imshow(im13);
+% digit_13 = function_crop_img(381, 1014, w, h, im13);
+% figure;imshow(digit_13);
 
-% im25 = imread('CC_2_5_epoch_990.png');
-% imshow(im25);
-% digit_25 = function_crop_img(381, 636, w, h, im25);
-% figure;imshow(digit_25);
+% im14 = imread('CC_1_4_epoch_990.png');
+% imshow(im14);
+% digit_14 = function_crop_img(381, 163, w, h, im14);
+% figure;imshow(digit_14);
 
-% im26 = imread('CC_2_6_epoch_990.png');
-% imshow(im26);
-% digit_26 = function_crop_img(381, 920, w, h, im26);
-% figure;imshow(digit_26);
+% im15 = imread('CC_1_5_epoch_990.png');
+% imshow(im15);
+% digit_15 = function_crop_img(381, 447, w, h, im15);
+% figure;imshow(digit_15);
 
-% im27 = imread('CC_2_7_epoch_990.png');
-% imshow(im27);
-% digit_27 = function_crop_img(381, 447, w, h, im27);
-% figure;imshow(digit_27);
+% im16 = imread('CC_1_6_epoch_990.png');
+% imshow(im16);
+% digit_16 = function_crop_img(381, 163, w, h, im16);
+% figure;imshow(digit_16);
 
-% im28 = imread('CC_2_8_epoch_990.png');
-% imshow(im28);
-% digit_28 = function_crop_img(381, 1014, w, h, im28);
-% figure;imshow(digit_28);
+% im17 = imread('CC_1_7_epoch_990.png');
+% imshow(im17);
+% digit_17 = function_crop_img(837, 258, w, h, im17);
+% figure;imshow(digit_17);
 
-% im29 = imread('CC_2_9_epoch_990.png');
-% imshow(im29);
-% digit_29 = function_crop_img(381, 731, w, h, im29);
-% figure;imshow(digit_29);
+% im18 = imread('CC_1_8_epoch_990.png');
+% imshow(im18);
+% digit_18 = function_crop_img(381, 163, w, h, im18);
+% figure;imshow(digit_18)
 
-save('/home/omkar/Documents/cvpr_cc_2_to_all')
+% im19 = imread('CC_1_9_epoch_990.png');
+% imshow(im19);
+% digit_19 = function_crop_img(381, 1014, w, h, im19);
+% figure;imshow(digit_19);
+
+save('/home/omkar/Documents/cvpr_cc_1_to_all')
 
 
 
